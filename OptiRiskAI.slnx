@@ -1,0 +1,24 @@
+<Solution>
+    <Configurations>
+        <Platform Name="Any CPU" />
+    </Configurations>
+    <Folder Name="/src/">
+        <Project Path="src/OptiRiskAI.Domain/OptiRiskAI.Domain.csproj" />
+        <Project Path="src/OptiRiskAI.Application/OptiRiskAI.Application.csproj" />
+        <Project Path="src/OptiRiskAI.EntityFrameworkCore/OptiRiskAI.EntityFrameworkCore.csproj" />
+        <Project Path="src/OptiRiskAI.Web/OptiRiskAI.Web.csproj" />
+        <Project Path="src/OptiRiskAI.Domain.Shared/OptiRiskAI.Domain.Shared.csproj" />
+        <Project Path="src/OptiRiskAI.Application.Contracts/OptiRiskAI.Application.Contracts.csproj" />
+        <Project Path="src/OptiRiskAI.HttpApi/OptiRiskAI.HttpApi.csproj" />
+        <Project Path="src/OptiRiskAI.HttpApi.Client/OptiRiskAI.HttpApi.Client.csproj" />
+        <Project Path="src/OptiRiskAI.DbMigrator/OptiRiskAI.DbMigrator.csproj" />
+    </Folder>
+    <Folder Name="/test/">
+        <Project Path="test/OptiRiskAI.Application.Tests/OptiRiskAI.Application.Tests.csproj" />
+        <Project Path="test/OptiRiskAI.Web.Tests/OptiRiskAI.Web.Tests.csproj" />
+        <Project Path="test/OptiRiskAI.EntityFrameworkCore.Tests/OptiRiskAI.EntityFrameworkCore.Tests.csproj" />
+        <Project Path="test/OptiRiskAI.TestBase/OptiRiskAI.TestBase.csproj" />
+        <Project Path="test/OptiRiskAI.Domain.Tests/OptiRiskAI.Domain.Tests.csproj" />
+        <Project Path="test/OptiRiskAI.HttpApi.Client.ConsoleTestApp/OptiRiskAI.HttpApi.Client.ConsoleTestApp.csproj" />
+    </Folder>
+</Solution>

@@ -1,0 +1,118 @@
+{
+  "template": "app",
+  "imports": {
+    "Volo.Abp.LeptonXLiteTheme": {
+      "version": "5.6.0",
+      "isInstalled": true,
+      "creationTime": "08/29/2026 16:18:56 +00:00"
+    },
+    "Volo.Abp.Account": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/29/2026 16:18:56 +00:00"
+    },
+    "Volo.Abp.OpenIddict": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/29/2026 16:18:56 +00:00"
+    },
+    "Volo.Abp.Identity": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/29/2026 16:18:56 +00:00"
+    },
+    "Volo.Abp.TenantManagement": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/29/2026 16:18:56 +00:00"
+    },
+    "Volo.Abp.SettingManagement": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/29/2026 16:18:56 +00:00"
+    },
+    "Volo.Abp.PermissionManagement": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/29/2026 16:18:56 +00:00"
+    },
+    "Volo.Abp.FeatureManagement": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/29/2026 16:18:56 +00:00"
+    },
+    "Volo.Abp.BlobStoring.Database": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/29/2026 16:18:56 +00:00"
+    }
+  },
+  "folders": {
+    "items": {
+      "src": {},
+      "test": {}
+    }
+  },
+  "packages": {
+    "OptiRiskAI.Application": {
+      "path": "src/OptiRiskAI.Application/OptiRiskAI.Application.abppkg",
+      "folder": "src"
+    },
+    "OptiRiskAI.Application.Tests": {
+      "path": "test/OptiRiskAI.Application.Tests/OptiRiskAI.Application.Tests.abppkg",
+      "folder": "test"
+    },
+    "OptiRiskAI.Domain.Shared": {
+      "path": "src/OptiRiskAI.Domain.Shared/OptiRiskAI.Domain.Shared.abppkg",
+      "folder": "src"
+    },
+    "OptiRiskAI.Application.Contracts": {
+      "path": "src/OptiRiskAI.Application.Contracts/OptiRiskAI.Application.Contracts.abppkg",
+      "folder": "src"
+    },
+    "OptiRiskAI.HttpApi": {
+      "path": "src/OptiRiskAI.HttpApi/OptiRiskAI.HttpApi.abppkg",
+      "folder": "src"
+    },
+    "OptiRiskAI.HttpApi.Client": {
+      "path": "src/OptiRiskAI.HttpApi.Client/OptiRiskAI.HttpApi.Client.abppkg",
+      "folder": "src"
+    },
+    "OptiRiskAI.Web": {
+      "path": "src/OptiRiskAI.Web/OptiRiskAI.Web.abppkg",
+      "folder": "src"
+    },
+    "OptiRiskAI.Web.Tests": {
+      "path": "test/OptiRiskAI.Web.Tests/OptiRiskAI.Web.Tests.abppkg",
+      "folder": "test"
+    },
+    "OptiRiskAI.EntityFrameworkCore.Tests": {
+      "path": "test/OptiRiskAI.EntityFrameworkCore.Tests/OptiRiskAI.EntityFrameworkCore.Tests.abppkg",
+      "folder": "test"
+    },
+    "OptiRiskAI.EntityFrameworkCore": {
+      "path": "src/OptiRiskAI.EntityFrameworkCore/OptiRiskAI.EntityFrameworkCore.abppkg",
+      "folder": "src"
+    },
+    "OptiRiskAI.TestBase": {
+      "path": "test/OptiRiskAI.TestBase/OptiRiskAI.TestBase.abppkg",
+      "folder": "test"
+    },
+    "OptiRiskAI.Domain.Tests": {
+      "path": "test/OptiRiskAI.Domain.Tests/OptiRiskAI.Domain.Tests.abppkg",
+      "folder": "test"
+    },
+    "OptiRiskAI.HttpApi.Client.ConsoleTestApp": {
+      "path": "test/OptiRiskAI.HttpApi.Client.ConsoleTestApp/OptiRiskAI.HttpApi.Client.ConsoleTestApp.abppkg",
+      "folder": "test"
+    },
+    "OptiRiskAI.DbMigrator": {
+      "path": "src/OptiRiskAI.DbMigrator/OptiRiskAI.DbMigrator.abppkg",
+      "folder": "src"
+    },
+    "OptiRiskAI.Domain": {
+      "path": "src/OptiRiskAI.Domain/OptiRiskAI.Domain.abppkg",
+      "folder": "src"
+    }
+  }
+}
