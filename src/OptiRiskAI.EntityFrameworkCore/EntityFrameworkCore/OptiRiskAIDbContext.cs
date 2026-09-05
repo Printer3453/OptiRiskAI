@@ -16,6 +16,7 @@ using Volo.Abp.SettingManagement.EntityFrameworkCore;
 using Volo.Abp.OpenIddict.EntityFrameworkCore;
 using Volo.Abp.TenantManagement;
 using Volo.Abp.TenantManagement.EntityFrameworkCore;
+using OptiRiskAI.RiskIntelligence;
 
 namespace OptiRiskAI.EntityFrameworkCore;
 
@@ -32,6 +33,8 @@ public class OptiRiskAIDbContext :
     public DbSet<Author> Authors { get; set; }
 
     public DbSet<Book> Books { get; set; }
+    public DbSet<RiskRule> RiskRules { get; set; }
+    public DbSet<RiskTelemetry> RiskTelemetries { get; set; }
 
     #region Entities from the modules
 
@@ -101,7 +104,18 @@ public class OptiRiskAIDbContext :
             b.Property(x => x.Name).IsRequired().HasMaxLength(128);
             b.HasOne<Author>().WithMany().HasForeignKey(x => x.AuthorId).IsRequired();
         });
+        builder.Entity<RiskRule>(b =>
+        {
+            b.ToTable(OptiRiskAIConsts.DbTablePrefix + "RiskRules", OptiRiskAIConsts.DbSchema);
+            b.ConfigureByConvention(); // ABP'nin Id ve Audit log kolonlarýný otomatik baðlar
+            b.Property(x => x.RuleName).IsRequired().HasMaxLength(128);
+        });
 
+        builder.Entity<RiskTelemetry>(b =>
+        {
+            b.ToTable(OptiRiskAIConsts.DbTablePrefix + "RiskTelemetries", OptiRiskAIConsts.DbSchema);
+            b.ConfigureByConvention();
+        });
         /* Configure your own tables/entities inside here */
 
         //builder.Entity<YourEntity>(b =>

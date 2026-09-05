@@ -6,7 +6,7 @@ using Volo.Abp.Domain.Entities.Auditing;
 
 namespace OptiRiskAI.RiskIntelligence
 {
-    public class RiskRule : FullAutidedAggregateRoot<Guid>
+    public class RiskRule : FullAuditedAggregateRoot<Guid>
     {
         public string RuleName { get; private set; }
 

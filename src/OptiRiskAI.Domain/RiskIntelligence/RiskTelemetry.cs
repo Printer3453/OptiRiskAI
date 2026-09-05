@@ -9,7 +9,7 @@ namespace OptiRiskAI.RiskIntelligence
     {
         // Haritada (Leaflet/Mapbox) göstereceğimiz koordinatlar
         public double Latitude { get; private set; }
-        public double Latitude { get; private set; }
+        public double Longitude { get; private set; }
 
         // Çevresel Sensör / Gözlem Verileri
         public double DistanceToPowerLineMeters { get; private set; }
