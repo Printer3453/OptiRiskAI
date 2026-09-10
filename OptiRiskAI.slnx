@@ -1,7 +1,4 @@
 <Solution>
-    <Configurations>
-        <Platform Name="Any CPU" />
-    </Configurations>
     <Folder Name="/src/">
         <Project Path="src/OptiRiskAI.Domain/OptiRiskAI.Domain.csproj" />
         <Project Path="src/OptiRiskAI.Application/OptiRiskAI.Application.csproj" />
