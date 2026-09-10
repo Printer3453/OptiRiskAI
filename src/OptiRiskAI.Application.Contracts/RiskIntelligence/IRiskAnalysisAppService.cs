@@ -6,12 +6,12 @@ using Volo.Abp.Application.Services;
 
 namespace OptiRiskAI.RiskIntelligence
 {
-    // IApplicationService'den miras alarak ABP'ye bunun bir API'ye dönüşmesi gerektiğini söylüyoruz
+    
     public interface IRiskAnalysisAppService : IApplicationService
     {
-        // UI'dan çevresel verileri alıp, deterministik kurallarla risk çarpanını hesaplayacak ana metodumuz
-        Task<RiskTelemetryDto> SubmitTelemetryAndAnalyzeAsync(CreateRiskTelemetryDto input);
+        
+       // Task<RiskTelemetryDto> SubmitTelemetryAndAnalyzeAsync(CreateRiskTelemetryDto input);
 
-        Task<List<RiskTelemetryDto>> GetLatestTelemetriesAsync();
+        //Task<List<RiskTelemetryDto>> GetLatestTelemetriesAsync();
     }
 }

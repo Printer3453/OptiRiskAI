@@ -1,7 +1,4 @@
-﻿using NCalc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System;
 using System.Threading.Tasks;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
@@ -11,16 +8,35 @@ namespace OptiRiskAI.RiskIntelligence
     public class RiskAnalysisAppService : ApplicationService, IRiskAnalysisAppService
     {
         private readonly IRepository<RiskTelemetry, Guid> _telemetryRepository;
-        private readonly IRepository<RiskRule, Guid> _ruleRepository;
 
-        public RiskAnalysisAppService(IRepository<RiskTelemetry, Guid> telemetryRepository, IRepository<RiskRule, Guid> ruleRepository)
+        public RiskAnalysisAppService(IRepository<RiskTelemetry, Guid> telemetryRepository)
         {
             _telemetryRepository = telemetryRepository;
-            _ruleRepository = ruleRepository;
         }
 
         public async Task<RiskTelemetryDto> SubmitTelemetryAndAnalyzeAsync(CreateRiskTelemetryDto input)
         {
+            
+            // 0-100 arası bir İklim/Yangın Risk Skoru hesaplıyoruz.
+
+            decimal baseRiskScore = 10.0m;
+
+            // Rüzgar Çarpanı: 50 km/h üzeri her kilometre için riski artır
+            decimal windFactor = input.WindSpeedKmh > 50 ? (decimal)(input.WindSpeedKmh - 50) * 0.8m : 0;
+
+            // Eğim Çarpanı: Eğimi yüksek arazide yangının hızı ve müdahale zorluğu artar
+            decimal slopeFactor = (decimal)input.SlopePercentage * 0.5m;
+
+            // Bitki Örtüsü / NDMI (Kuruma) Simülasyonu
+            decimal vegetationFactor = input.VegetationType.Contains("Çam", StringComparison.OrdinalIgnoreCase) ||
+                                       input.VegetationType.Contains("Pine", StringComparison.OrdinalIgnoreCase)
+                                       ? 30.0m : 10.0m;
+
+            // Toplam Skor: Bütün risk faktörlerini topla ve 100'e sabitle (Clamp)
+            decimal rawScore = baseRiskScore + windFactor + slopeFactor + vegetationFactor;
+            decimal calculatedRiskScore = Math.Min(Math.Max(rawScore, 0), 100);
+
+            //  ENTITY KAYDI
             var telemetry = new RiskTelemetry(
                 GuidGenerator.Create(),
                 input.Latitude,
@@ -31,49 +47,13 @@ namespace OptiRiskAI.RiskIntelligence
                 input.VegetationType
             );
 
-            decimal finalMultiplier = 1.0m;
-            Guid? appliedRuleId = null;
-            var activeRules = await _ruleRepository.GetListAsync(r => r.IsActive);
-
-            //  Kural Motoru: AI'ın ürettiği kuralları dinamik olarak test ediyoruz
-            foreach (var rule in activeRules)
-            {
-                try
-                {
-                    // AI'ın ürettiği koşulu NCalc'in sorunsuz okuyabilmesi için ufak bir syntax temizliği
-                    var safeExpression = rule.ConditionExpression
-                        .Replace("AND", "&&")
-                        .Replace("OR", "||");
-
-                    var expression = new Expression(safeExpression);
-                    // Sahadan gelen telemetri verilerini dinamik kurala parametre olarak enjekte ediyoruz
-                    expression.Parameters["WindSpeedKmh"] = input.WindSpeedKmh;
-                    expression.Parameters["DistanceToPowerLineMeters"] = input.DistanceToPowerLineMeters;
-                    expression.Parameters["SlopePercentage"] = input.SlopePercentage;
-                    expression.Parameters["VegetationType"] = input.VegetationType;
-
-                    // AI'ın yazdığı kuralı C# kodunda anlık olarak (Runtime) çalıştırıyoruz
-                    var isMatch = Convert.ToBoolean(expression.Evaluate());
-
-                    // Eğer sahadaki koşullar kuralı karşılıyorsa ve risk çarpanı eskisinden yüksekse, bunu geçerli kural yap
-                    if (isMatch&&rule.RiskMultiplier>finalMultiplier)
-                    {
-                        finalMultiplier = rule.RiskMultiplier;
-                        appliedRuleId = rule.Id;
-                    }
-
-                }
-                catch (Exception ex)
-                {
-                    // Log kayıtlarını daha sonra yapacağız UNUTMA!!! Şimdilik hata vermesin 
-                    continue;
-                }
-            }
-
-            telemetry.ApplyDeterminedRisk(appliedRuleId ?? Guid.Empty, finalMultiplier);
+            // Domain Entity'mizdeki Multiplier alanını şimdilik "100 Üzerinden Skor" olarak kullanıyoruz.
+            // (İleride Entity'de bu alanı 'RiskScore' olarak adlandırabiliriz)
+            telemetry.ApplyDeterminedRisk(Guid.Empty, calculatedRiskScore);
 
             await _telemetryRepository.InsertAsync(telemetry);
 
+            
             return new RiskTelemetryDto
             {
                 Id = telemetry.Id,
@@ -84,34 +64,11 @@ namespace OptiRiskAI.RiskIntelligence
                 SlopePercentage = telemetry.SlopePercentage,
                 VegetationType = telemetry.VegetationType,
                 AppliedRiskRuleId = telemetry.AppliedRiskRuleId,
-                CalculatedRiskMultiplier = telemetry.CalculatedRiskMultiplier,
+                CalculatedRiskMultiplier = telemetry.CalculatedRiskMultiplier, // 0-100 arası skor dönüyor
                 IsProcessed = telemetry.IsProcessed
             };
         }
 
-
-        public async Task<List<RiskTelemetryDto>> GetLatestTelemetriesAsync()
-        {
-            // Veritabanından verileri alıyoruz (En yeni kayıtlar en üstte görünecek şekilde sıralıyoruz)
-            var queryable = await _telemetryRepository.GetQueryableAsync();
-            var data = queryable.OrderByDescending(x => x.CreationTime).Take(50).ToList();
-
-            
-            return data.Select(t => new RiskTelemetryDto
-            {
-                Id = t.Id,
-                Latitude = t.Latitude,
-                Longitude = t.Longitude,
-                DistanceToPowerLineMeters = t.DistanceToPowerLineMeters,
-                WindSpeedKmh = t.WindSpeedKmh,
-                SlopePercentage = t.SlopePercentage,
-                VegetationType = t.VegetationType,
-                AppliedRiskRuleId = t.AppliedRiskRuleId,
-                CalculatedRiskMultiplier = t.CalculatedRiskMultiplier,
-                IsProcessed = t.IsProcessed
-            }).ToList();
-        }
-
-
+        
     }
 }

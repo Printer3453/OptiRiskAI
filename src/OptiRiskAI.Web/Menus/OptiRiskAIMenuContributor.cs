@@ -68,20 +68,7 @@ public class OptiRiskAIMenuContributor : IMenuContributor
                 ).RequirePermissions(OptiRiskAIPermissions.Authors.Default)
             )
         );
-        context.Menu.AddItem(
-    new ApplicationMenuItem(
-        "OptiRiskAI.AiRuleManager",
-        "🤖 Otonom Kural Yöneticisi",
-        url: "/AiRuleManager"
-    )
-);
-        context.Menu.AddItem(
-    new ApplicationMenuItem(
-        "OptiRiskAI.AiRuleManager",
-        "Canlı Risk Monitörü",
-        url: "/RiskMonitor"
-    )
-);
+        
 
         return Task.CompletedTask;
     }
