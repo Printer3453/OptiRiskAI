@@ -1,33 +1,21 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
-using Volo.Abp.Guids;
 
 namespace OptiRiskAI.RiskIntelligence
 {
-    // ApplicationService'den miras alıp, Contracts katmanında yazdığımız arayüzü (Interface) uyguluyoruz
     public class RiskAnalysisAppService : ApplicationService, IRiskAnalysisAppService
     {
         private readonly IRepository<RiskTelemetry, Guid> _telemetryRepository;
-        private readonly IRepository<RiskRule, Guid> _ruleRepository;
 
-        // Dependency Injection (DI) - Veritabanı tablolarımızı aracı (Repository) desenle içeri alıyoruz
-        public RiskAnalysisAppService(
-            IRepository<RiskTelemetry, Guid> telemetryRepository,
-            IRepository<RiskRule, Guid> ruleRepository)
+        public RiskAnalysisAppService(IRepository<RiskTelemetry, Guid> telemetryRepository)
         {
             _telemetryRepository = telemetryRepository;
-            _ruleRepository = ruleRepository;
         }
 
-        // Bu metod, kullanıcıdan gelen telemetri verilerini alır, bir RiskTelemetry entity'si oluşturur ve veritabanına kaydeder.
         public async Task<RiskTelemetryDto> SubmitTelemetryAndAnalyzeAsync(CreateRiskTelemetryDto input)
         {
-            // 1. Kapsüllemeye (Encapsulation) uygun olarak Entity'mizi oluşturuyoruz
-            // GuidGenerator.Create() ABP'nin sıralı (sequential) ve performanslı ID üreticisidir
             var telemetry = new RiskTelemetry(
                 GuidGenerator.Create(),
                 input.Latitude,
@@ -38,12 +26,24 @@ namespace OptiRiskAI.RiskIntelligence
                 input.VegetationType
             );
 
-            // 2. İlerleyen aşamada AI'ın ürettiği "RiskRule" matrisi burada devreye girip
-            // telemetry.ApplyDeterminedRisk() metodunu tetikleyecek.
-            // Şimdilik ham veriyi güvenli bir şekilde sisteme kaydediyoruz.
+            // Basit bir risk çarpanı hesaplama mantığı ekliyoruz. Bu, MVP aşamasında kullanılacak ve daha sonra dinamik kurallar ile değiştirilebilir.
+            decimal calculatedMultiplier = 1.0m;
+
+            if (input.WindSpeedKmh > 50 || input.SlopePercentage > 30)
+            {
+                calculatedMultiplier = 2.5m;
+            }
+            if (input.DistanceToPowerLineMeters < 10)
+            {
+                calculatedMultiplier += 1.5m;
+            }
+
+            // Doğrudan kendi yazdığın orijinal metodu kullanıyoruz. 
+            // veritabanından dinamik bir kural okumadığımız için kural ID'sine şimdilik Guid.Empty geçiyoruz.
+            telemetry.ApplyDeterminedRisk(Guid.Empty, calculatedMultiplier);
+
             await _telemetryRepository.InsertAsync(telemetry);
 
-            // 3. Güvenlik için Veritabanı modelini (Entity), Taşıyıcı modele (DTO) çevirip dışarı dönüyoruz
             return new RiskTelemetryDto
             {
                 Id = telemetry.Id,
