@@ -1,0 +1,68 @@
+﻿@page
+@model OptiRiskAI.Web.Pages.RiskMonitor.IndexModel
+@{
+    ViewData["Title"] = "Canlı Risk Monitörü";
+}
+
+<div class="card shadow-sm mt-4">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">📡 Canlı Telemetri & Risk Monitörü</h5>
+        <button class="btn btn-sm btn-outline-light" onclick="location.reload()">🔄 Yenile</button>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0 text-center align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Bölge (Enlem/Boylam)</th>
+                        <th>Rüzgar (km/h)</th>
+                        <th>Eğim (%)</th>
+                        <th>Bitki Örtüsü</th>
+                        <th>Kablo Mesafesi (m)</th>
+                        <th>Durum</th>
+                        <th>Uygulanan Çarpan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Telemetries.Any())
+                    {
+                        <tr><td colspan="7" class="text-muted p-4">Henüz sahadan gelen bir telemetri verisi yok.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model.Telemetries)
+                        {
+                            <tr>
+                                <td><small>@item.Latitude, @item.Longitude</small></td>
+                                <td class="fw-bold text-primary">@item.WindSpeedKmh</td>
+                                <td>%@item.SlopePercentage</td>
+                                <td>@item.VegetationType</td>
+                                <td>@item.DistanceToPowerLineMeters</td>
+                                <td>
+                                    @if (item.IsProcessed)
+                                    {
+                                        <span class="badge bg-success">AI Onaylı</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (item.CalculatedRiskMultiplier >= 4)
+                                    {
+                                        <span class="badge bg-danger fs-6">@item.CalculatedRiskMultiplier (KRİTİK)</span>
+                                    }
+                                    else if (item.CalculatedRiskMultiplier > 1)
+                                    {
+                                        <span class="badge bg-warning text-dark fs-6">@item.CalculatedRiskMultiplier (UYARI)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary fs-6">@item.CalculatedRiskMultiplier (NORMAL)</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

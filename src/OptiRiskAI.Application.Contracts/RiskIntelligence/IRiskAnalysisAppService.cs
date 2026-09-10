@@ -11,5 +11,7 @@ namespace OptiRiskAI.RiskIntelligence
     {
         // UI'dan çevresel verileri alıp, deterministik kurallarla risk çarpanını hesaplayacak ana metodumuz
         Task<RiskTelemetryDto> SubmitTelemetryAndAnalyzeAsync(CreateRiskTelemetryDto input);
+
+        Task<List<RiskTelemetryDto>> GetLatestTelemetriesAsync();
     }
 }

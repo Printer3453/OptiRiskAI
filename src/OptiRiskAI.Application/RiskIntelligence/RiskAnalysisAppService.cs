@@ -1,8 +1,10 @@
-﻿using System;
+﻿using NCalc;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
-using NCalc;
 
 namespace OptiRiskAI.RiskIntelligence
 {
@@ -86,5 +88,30 @@ namespace OptiRiskAI.RiskIntelligence
                 IsProcessed = telemetry.IsProcessed
             };
         }
+
+
+        public async Task<List<RiskTelemetryDto>> GetLatestTelemetriesAsync()
+        {
+            // Veritabanından verileri alıyoruz (En yeni kayıtlar en üstte görünecek şekilde sıralıyoruz)
+            var queryable = await _telemetryRepository.GetQueryableAsync();
+            var data = queryable.OrderByDescending(x => x.CreationTime).Take(50).ToList();
+
+            
+            return data.Select(t => new RiskTelemetryDto
+            {
+                Id = t.Id,
+                Latitude = t.Latitude,
+                Longitude = t.Longitude,
+                DistanceToPowerLineMeters = t.DistanceToPowerLineMeters,
+                WindSpeedKmh = t.WindSpeedKmh,
+                SlopePercentage = t.SlopePercentage,
+                VegetationType = t.VegetationType,
+                AppliedRiskRuleId = t.AppliedRiskRuleId,
+                CalculatedRiskMultiplier = t.CalculatedRiskMultiplier,
+                IsProcessed = t.IsProcessed
+            }).ToList();
+        }
+
+
     }
 }
