@@ -38,8 +38,6 @@ namespace OptiRiskAI.RiskIntelligence
                 calculatedMultiplier += 1.5m;
             }
 
-            // Doğrudan kendi yazdığın orijinal metodu kullanıyoruz. 
-            // veritabanından dinamik bir kural okumadığımız için kural ID'sine şimdilik Guid.Empty geçiyoruz.
             telemetry.ApplyDeterminedRisk(Guid.Empty, calculatedMultiplier);
 
             await _telemetryRepository.InsertAsync(telemetry);
