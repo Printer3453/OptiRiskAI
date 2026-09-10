@@ -2,16 +2,19 @@
 using System.Threading.Tasks;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
+using NCalc;
 
 namespace OptiRiskAI.RiskIntelligence
 {
     public class RiskAnalysisAppService : ApplicationService, IRiskAnalysisAppService
     {
         private readonly IRepository<RiskTelemetry, Guid> _telemetryRepository;
+        private readonly IRepository<RiskRule, Guid> _ruleRepository;
 
-        public RiskAnalysisAppService(IRepository<RiskTelemetry, Guid> telemetryRepository)
+        public RiskAnalysisAppService(IRepository<RiskTelemetry, Guid> telemetryRepository, IRepository<RiskRule, Guid> ruleRepository)
         {
             _telemetryRepository = telemetryRepository;
+            _ruleRepository = ruleRepository;
         }
 
         public async Task<RiskTelemetryDto> SubmitTelemetryAndAnalyzeAsync(CreateRiskTelemetryDto input)
@@ -26,19 +29,46 @@ namespace OptiRiskAI.RiskIntelligence
                 input.VegetationType
             );
 
-            // Basit bir risk çarpanı hesaplama mantığı ekliyoruz. Bu, MVP aşamasında kullanılacak ve daha sonra dinamik kurallar ile değiştirilebilir.
-            decimal calculatedMultiplier = 1.0m;
+            decimal finalMultiplier = 1.0m;
+            Guid? appliedRuleId = null;
+            var activeRules = await _ruleRepository.GetListAsync(r => r.IsActive);
 
-            if (input.WindSpeedKmh > 50 || input.SlopePercentage > 30)
+            //  Kural Motoru: AI'ın ürettiği kuralları dinamik olarak test ediyoruz
+            foreach (var rule in activeRules)
             {
-                calculatedMultiplier = 2.5m;
-            }
-            if (input.DistanceToPowerLineMeters < 10)
-            {
-                calculatedMultiplier += 1.5m;
+                try
+                {
+                    // AI'ın ürettiği koşulu NCalc'in sorunsuz okuyabilmesi için ufak bir syntax temizliği
+                    var safeExpression = rule.ConditionExpression
+                        .Replace("AND", "&&")
+                        .Replace("OR", "||");
+
+                    var expression = new Expression(safeExpression);
+                    // Sahadan gelen telemetri verilerini dinamik kurala parametre olarak enjekte ediyoruz
+                    expression.Parameters["WindSpeedKmh"] = input.WindSpeedKmh;
+                    expression.Parameters["DistanceToPowerLineMeters"] = input.DistanceToPowerLineMeters;
+                    expression.Parameters["SlopePercentage"] = input.SlopePercentage;
+                    expression.Parameters["VegetationType"] = input.VegetationType;
+
+                    // AI'ın yazdığı kuralı C# kodunda anlık olarak (Runtime) çalıştırıyoruz
+                    var isMatch = Convert.ToBoolean(expression.Evaluate());
+
+                    // Eğer sahadaki koşullar kuralı karşılıyorsa ve risk çarpanı eskisinden yüksekse, bunu geçerli kural yap
+                    if (isMatch&&rule.RiskMultiplier>finalMultiplier)
+                    {
+                        finalMultiplier = rule.RiskMultiplier;
+                        appliedRuleId = rule.Id;
+                    }
+
+                }
+                catch (Exception ex)
+                {
+                    // Log kayıtlarını daha sonra yapacağız UNUTMA!!! Şimdilik hata vermesin 
+                    continue;
+                }
             }
 
-            telemetry.ApplyDeterminedRisk(Guid.Empty, calculatedMultiplier);
+            telemetry.ApplyDeterminedRisk(appliedRuleId ?? Guid.Empty, finalMultiplier);
 
             await _telemetryRepository.InsertAsync(telemetry);
 

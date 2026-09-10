@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.80.1" />
+    <PackageReference Include="NCalcSync" Version="7.1.0" />
     <PackageReference Include="Volo.Abp.PermissionManagement.Application" Version="10.6.0" />
     <PackageReference Include="Volo.Abp.FeatureManagement.Application" Version="10.6.0" />
     <PackageReference Include="Volo.Abp.SettingManagement.Application" Version="10.6.0" />
