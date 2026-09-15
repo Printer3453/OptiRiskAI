@@ -1,7 +1,10 @@
 ﻿using System;
+using System.IO;
 using System.Threading.Tasks;
+using NetTopologySuite.Geometries;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
+
 
 namespace OptiRiskAI.RiskIntelligence
 {
@@ -16,25 +19,30 @@ namespace OptiRiskAI.RiskIntelligence
 
         public async Task<RiskTelemetryDto> SubmitTelemetryAndAnalyzeAsync(CreateRiskTelemetryDto input)
         {
-            
-            // 0-100 arası bir İklim/Yangın Risk Skoru hesaplıyoruz.
+            // Koordinat Noktası (Boylam, Enlem sırasıyla girilir)
+            var point =new Point(input.Latitude, input.Longitude);
 
-            decimal baseRiskScore = 10.0m;
+            decimal calculatedRiskScore = 20.0m; // varsayılan risk skoru
+            bool isInsideRiskArea = false;
 
-            // Rüzgar Çarpanı: 50 km/h üzeri her kilometre için riski artır
-            decimal windFactor = input.WindSpeedKmh > 50 ? (decimal)(input.WindSpeedKmh - 50) * 0.8m : 0;
+            //  Poligon Geometrisi (Antalya/Manavgat Orman Hattı Simülasyonu
+            var geometryFactory = new GeometryFactory();
+            var coordinates = new[]
+            {
+                new Coordinate(31.0, 36.5),
+                new Coordinate(32.0, 36.5),
+                new Coordinate(32.0, 37.5),
+                new Coordinate(31.0, 37.5),
+                new Coordinate(31.0, 36.5) // Poligonun başlangıç ve bitiş noktası aynı olmalı
+            };
+            var riskPolygon = geometryFactory.CreatePolygon(coordinates);
 
-            // Eğim Çarpanı: Eğimi yüksek arazide yangının hızı ve müdahale zorluğu artar
-            decimal slopeFactor = (decimal)input.SlopePercentage * 0.5m;
-
-            // Bitki Örtüsü / NDMI (Kuruma) Simülasyonu
-            decimal vegetationFactor = input.VegetationType.Contains("Çam", StringComparison.OrdinalIgnoreCase) ||
-                                       input.VegetationType.Contains("Pine", StringComparison.OrdinalIgnoreCase)
-                                       ? 30.0m : 10.0m;
-
-            // Toplam Skor: Bütün risk faktörlerini topla ve 100'e sabitle (Clamp)
-            decimal rawScore = baseRiskScore + windFactor + slopeFactor + vegetationFactor;
-            decimal calculatedRiskScore = Math.Min(Math.Max(rawScore, 0), 100);
+            //  Nokta riskli poligonun içinde mi?
+            if (riskPolygon.Intersects(point))
+            {
+                calculatedRiskScore = 85.0m;
+                isInsideRiskArea = true;
+            }
 
             //  ENTITY KAYDI
             var telemetry = new RiskTelemetry(
@@ -47,25 +55,16 @@ namespace OptiRiskAI.RiskIntelligence
                 input.VegetationType
             );
 
-            // Domain Entity'mizdeki Multiplier alanını şimdilik "100 Üzerinden Skor" olarak kullanıyoruz.
-            // (İleride Entity'de bu alanı 'RiskScore' olarak adlandırabiliriz)
-            telemetry.ApplyDeterminedRisk(Guid.Empty, calculatedRiskScore);
+            telemetry.ApplyDeterminedRisk(Guid.Empty, calculatedRiskScore); // Risk skoru ve karar uygulanıyor
+            await _telemetryRepository.InsertAsync(telemetry);// ENTITY KAYDI
 
-            await _telemetryRepository.InsertAsync(telemetry);
-
-            
-            return new RiskTelemetryDto
+            return new RiskTelemetryDto// DTO DÖNÜŞÜ
             {
                 Id = telemetry.Id,
                 Latitude = telemetry.Latitude,
                 Longitude = telemetry.Longitude,
-                DistanceToPowerLineMeters = telemetry.DistanceToPowerLineMeters,
-                WindSpeedKmh = telemetry.WindSpeedKmh,
-                SlopePercentage = telemetry.SlopePercentage,
-                VegetationType = telemetry.VegetationType,
-                AppliedRiskRuleId = telemetry.AppliedRiskRuleId,
-                CalculatedRiskMultiplier = telemetry.CalculatedRiskMultiplier, // 0-100 arası skor dönüyor
-                IsProcessed = telemetry.IsProcessed
+                CalculatedRiskMultiplier = calculatedRiskScore,
+                IsProcessed = true
             };
         }
 
