@@ -19,7 +19,6 @@
         </div>
     </div>
 
-    <!-- Sonuç Paneli -->
     <div class="col-md-4">
         <div class="card shadow-sm h-100">
             <div class="card-header bg-danger text-white fw-bold">
@@ -35,7 +34,17 @@
                 <h2 id="score-display" class="text-center display-4 fw-bold text-secondary">0</h2>
 
                 <hr />
-                <button class="btn btn-primary w-100 mt-2" onclick="alert('Faz 3: Semantic Kernel Ajanı Yakında Bağlanacak!')">Ajanı Tetikle (İş Emri Üret)</button>
+                <button id="btn-agent" class="btn btn-primary w-100 mt-2" onclick="triggerAgent()">Ajanı Tetikle (İş Emri Üret)</button>
+
+                <!-- Adım 4: Ajan Sonuç Paneli (Başlangıçta Gizli) -->
+                <div id="agent-result-panel" class="mt-4 d-none">
+                    <div class="alert alert-info border-1 border-info shadow-sm p-3">
+                        <h6 class="fw-bold mb-3 text-dark"><i class="fas fa-robot"></i> 🤖 Otonom Ajan (AI) Kararı</h6>
+                        <p class="mb-2 small text-dark"><strong>Aksiyon:</strong> <span id="agent-action" class="badge bg-dark fs-6">-</span></p>
+                        <p class="mb-2 small text-dark"><strong>Departman:</strong> <span id="agent-dept" class="fw-bold">-</span></p>
+                        <p class="mb-0 small text-dark"><strong>Gerekçe:</strong> <em id="agent-reasoning">-</em></p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -44,57 +53,122 @@
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        // Haritayı Türkiye merkezli başlat
-        var map = L.map('map').setView([38.96, 35.24], 6);
+    // Global değişkenler: Butona basıldığında ajana gönderilmek üzere saklanır
+    let selectedLat = 0;
+    let selectedLng = 0;
+    let currentScore = 0;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        var map = L.map('map').setView([36.96, 31.54], 8); // Antalya merkeze biraz daha yakınlaştırdık
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // riskli alanı haritada görsel olarak belirt (Antalya bölgesi)
         var riskBounds = [[36.5, 31.0], [37.5, 32.0]];
-        L.rectangle(riskBounds, {color: "#ff7800", weight: 1, fillOpacity: 0.2}).addTo(map);
+        L.rectangle(riskBounds, { color: "#ff7800", weight: 1, fillOpacity: 0.2 }).addTo(map);
 
         var currentMarker = null;
 
-        // Haritaya Tıklama Olayı (AJAX POST)
         map.on('click', function(e) {
-            var lat = e.latlng.lat;
-            var lng = e.latlng.lng;
+            selectedLat = e.latlng.lat;
+            selectedLng = e.latlng.lng;
+            currentScore = 0; // Yeni lokasyon seçildiğinde skoru sıfırla
 
-            if(currentMarker) { map.removeLayer(currentMarker); }
-            currentMarker = L.marker([lat, lng]).addTo(map);
+            // Ajan panelini gizle
+            document.getElementById('agent-result-panel').classList.add('d-none');
 
-            document.getElementById('coord-display').innerText = lat.toFixed(4) + ", " + lng.toFixed(4);
+            if (currentMarker) { map.removeLayer(currentMarker); }
+            currentMarker = L.marker([selectedLat, selectedLng]).addTo(map);
+
+            document.getElementById('coord-display').innerText = selectedLat.toFixed(4) + ", " + selectedLng.toFixed(4);
             document.getElementById('score-display').innerText = "Hesaplanıyor...";
+            document.getElementById('score-display').className = "text-center display-4 fw-bold text-secondary";
 
-            // C# Backend'ine veri gönderimi
             fetch('/api/app/risk-analysis/submit-telemetry-and-analyze', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': abp.security.antiForgery.getToken()
+                },
                 body: JSON.stringify({
-                    latitude: lat,
-                    longitude: lng,
+                    latitude: selectedLat,
+                    longitude: selectedLng,
                     distanceToPowerLineMeters: 0,
                     windSpeedKmh: 0,
                     slopePercentage: 0,
-                    vegetationType: "Bilinmiyor"
+                    vegetationType: "GeoJSON Poligon Analizi"
                 })
             })
-            .then(response => response.json())
-            .then(data => {
-                var scoreElement = document.getElementById('score-display');
-                scoreElement.innerText = data.calculatedRiskMultiplier;
+                .then(async response => {
+                    if (!response.ok) throw new Error("Sunucu hatası");
+                    return response.json();
+                })
+                .then(data => {
+                    currentScore = data.calculatedRiskMultiplier; // Ajan için skoru kaydet
+                    var scoreElement = document.getElementById('score-display');
+                    scoreElement.innerText = currentScore;
 
-                if(data.calculatedRiskMultiplier > 80) {
-                    scoreElement.className = "text-center display-4 fw-bold text-danger";
-                } else {
-                    scoreElement.className = "text-center display-4 fw-bold text-success";
-                }
-            })
-            .catch(error => console.error('Hata:', error));
+                    if (currentScore > 80) {
+                        scoreElement.className = "text-center display-4 fw-bold text-danger";
+                    } else {
+                        scoreElement.className = "text-center display-4 fw-bold text-success";
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('score-display').innerText = "HATA";
+                });
         });
     });
+
+    // Adım 3: Agentic Workflow Tetikleyicisi
+    window.triggerAgent = function() {
+        if (currentScore === 0) {
+            alert("Lütfen önce haritadan bir lokasyon seçin ve riskin hesaplanmasını bekleyin.");
+            return;
+        }
+
+        const btn = document.getElementById('btn-agent');
+        btn.innerText = "Ajan Düşünüyor (Yapay Zeka)...";
+        btn.disabled = true;
+
+        // Swagger'daki parametre yapısına uygun şekilde query üzerinden gönderiyoruz
+        const agentUrl = `/api/app/risk-action-agent/evaluate-risk-score-and-decide-action?calculatedScore=${currentScore}&latitude=${selectedLat}&longitude=${selectedLng}`;
+
+        fetch(agentUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': abp.security.antiForgery.getToken()
+            }
+        })
+            .then(async response => {
+                if (!response.ok) throw new Error("Ajan API Hatası");
+                return response.json();
+            })
+            .then(data => {
+                // Ajanın ürettiği sonuçları ekrana bas
+                document.getElementById('agent-result-panel').classList.remove('d-none');
+                document.getElementById('agent-action').innerText = data.actionType;
+
+                var actionBadge = document.getElementById('agent-action');
+                if (data.actionType === "BLOCK_POLICY") actionBadge.className = "badge bg-danger fs-6";
+                else if (data.actionType === "ALERT_TEAM") actionBadge.className = "badge bg-warning text-dark fs-6";
+                else actionBadge.className = "badge bg-secondary fs-6";
+
+                document.getElementById('agent-dept').innerText = data.targetDepartment;
+                document.getElementById('agent-reasoning').innerText = data.aiReasoning;
+
+                // Butonu eski haline getir
+                btn.innerText = "Ajanı Tetikle (İş Emri Üret)";
+                btn.disabled = false;
+            })
+            .catch(error => {
+                console.error(error);
+                alert("Ajanla iletişim kurulamadı. Ollama çalışıyor mu?");
+                btn.innerText = "Ajanı Tetikle (İş Emri Üret)";
+                btn.disabled = false;
+            });
+    }
 </script>

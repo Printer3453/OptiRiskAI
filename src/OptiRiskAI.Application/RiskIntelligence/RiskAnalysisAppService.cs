@@ -19,32 +19,33 @@ namespace OptiRiskAI.RiskIntelligence
 
         public async Task<RiskTelemetryDto> SubmitTelemetryAndAnalyzeAsync(CreateRiskTelemetryDto input)
         {
-            // Koordinat Noktası (Boylam, Enlem sırasıyla girilir)
-            var point =new Point(input.Latitude, input.Longitude);
+            // 1. Kurumsal GIS Motorunu Başlat
+            var geometryFactory = new NetTopologySuite.Geometries.GeometryFactory();
 
-            decimal calculatedRiskScore = 20.0m; // varsayılan risk skoru
-            bool isInsideRiskArea = false;
+            // 2. Gerçek Coğrafi Nokta (Point) Oluşturma
+            // DİKKAT: Haritacılıkta her zaman önce X (Boylam/Longitude), sonra Y (Enlem/Latitude) yazılır.
+            var point = geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(input.Longitude, input.Latitude));
 
-            //  Poligon Geometrisi (Antalya/Manavgat Orman Hattı Simülasyonu
-            var geometryFactory = new GeometryFactory();
+            decimal calculatedRiskScore = 20.0m; // Varsayılan düşük risk
+
+            // Güvenli Poligon Geometrisi (Antalya/Manavgat Orman Hattı Simülasyonu)
             var coordinates = new[]
             {
-                new Coordinate(31.0, 36.5),
-                new Coordinate(32.0, 36.5),
-                new Coordinate(32.0, 37.5),
-                new Coordinate(31.0, 37.5),
-                new Coordinate(31.0, 36.5) // Poligonun başlangıç ve bitiş noktası aynı olmalı
-            };
+        new NetTopologySuite.Geometries.Coordinate(31.0, 36.5),
+        new NetTopologySuite.Geometries.Coordinate(32.0, 36.5),
+        new NetTopologySuite.Geometries.Coordinate(32.0, 37.5),
+        new NetTopologySuite.Geometries.Coordinate(31.0, 37.5),
+        new NetTopologySuite.Geometries.Coordinate(31.0, 36.5) // Poligon kapanmalı
+    };
             var riskPolygon = geometryFactory.CreatePolygon(coordinates);
 
-            //  Nokta riskli poligonun içinde mi?
-            if (riskPolygon.Intersects(point))
+            //  Nokta riskli poligonun tam İÇİNDE mi?
+            if (riskPolygon.Contains(point))
             {
                 calculatedRiskScore = 85.0m;
-                isInsideRiskArea = true;
             }
 
-            //  ENTITY KAYDI
+            //  Entity Kaydı
             var telemetry = new RiskTelemetry(
                 GuidGenerator.Create(),
                 input.Latitude,
@@ -55,10 +56,10 @@ namespace OptiRiskAI.RiskIntelligence
                 input.VegetationType
             );
 
-            telemetry.ApplyDeterminedRisk(Guid.Empty, calculatedRiskScore); // Risk skoru ve karar uygulanıyor
-            await _telemetryRepository.InsertAsync(telemetry);// ENTITY KAYDI
+            telemetry.ApplyDeterminedRisk(Guid.Empty, calculatedRiskScore);
+            await _telemetryRepository.InsertAsync(telemetry);
 
-            return new RiskTelemetryDto// DTO DÖNÜŞÜ
+            return new RiskTelemetryDto
             {
                 Id = telemetry.Id,
                 Latitude = telemetry.Latitude,
@@ -68,6 +69,6 @@ namespace OptiRiskAI.RiskIntelligence
             };
         }
 
-        
+
     }
 }
