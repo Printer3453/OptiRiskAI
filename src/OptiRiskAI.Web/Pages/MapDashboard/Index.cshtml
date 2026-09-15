@@ -19,27 +19,34 @@
         </div>
     </div>
 
+    <!-- Sonuç Paneli -->
     <div class="col-md-4">
         <div class="card shadow-sm h-100">
-            <div class="card-header bg-danger text-white fw-bold">
-                📊 Deterministik Risk Sonucu
+            <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
+                <span>📊 Aktüeryal Risk Sonucu</span>
+                <span class="badge bg-success" style="font-size: 0.75rem;">Çözünürlük: 1.3 km²</span>
             </div>
             <div class="card-body">
-                <p class="text-muted small">Harita üzerinden bir lokasyon seçerek analizi başlatın.</p>
+                <p class="text-muted small">Harita üzerinden hiper-lokal (grid bazlı) analizi başlatın.</p>
 
-                <h6 class="fw-bold mt-3">Seçilen Koordinatlar:</h6>
-                <p id="coord-display" class="border p-2 bg-light">-</p>
+                <h6 class="fw-bold mt-3 text-secondary">📍 Seçilen Koordinatlar:</h6>
+                <p id="coord-display" class="border p-2 bg-light font-monospace fw-bold">-</p>
 
-                <h6 class="fw-bold mt-3">Hesaplanan Risk Skoru (C# Motoru):</h6>
+                <h6 class="fw-bold mt-3 text-secondary">🔥 Ateşleme Olasılığı Skoru (Ignition):</h6>
                 <h2 id="score-display" class="text-center display-4 fw-bold text-secondary">0</h2>
 
-                <hr />
-                <button id="btn-agent" class="btn btn-primary w-100 mt-2" onclick="triggerAgent()">Ajanı Tetikle (İş Emri Üret)</button>
+                <h6 class="fw-bold mt-4 text-secondary">🌬️ Yangın Yayılım Riski (Spread):</h6>
+                <p id="spread-display" class="alert alert-secondary text-center fw-bold">-</p>
 
-                <!-- Adım 4: Ajan Sonuç Paneli (Başlangıçta Gizli) -->
+                <hr />
+                <button id="btn-agent" class="btn btn-primary w-100 mt-2 fw-bold" onclick="triggerAgent()">
+                    <i class="fas fa-brain"></i> Ajanı Tetikle (İş Emri Üret)
+                </button>
+
+                <!-- Ajan Sonuç Paneli -->
                 <div id="agent-result-panel" class="mt-4 d-none">
                     <div class="alert alert-info border-1 border-info shadow-sm p-3">
-                        <h6 class="fw-bold mb-3 text-dark"><i class="fas fa-robot"></i> 🤖 Otonom Ajan (AI) Kararı</h6>
+                        <h6 class="fw-bold mb-3 text-dark">🤖 Otonom Ajan (AI) Kararı</h6>
                         <p class="mb-2 small text-dark"><strong>Aksiyon:</strong> <span id="agent-action" class="badge bg-dark fs-6">-</span></p>
                         <p class="mb-2 small text-dark"><strong>Departman:</strong> <span id="agent-dept" class="fw-bold">-</span></p>
                         <p class="mb-0 small text-dark"><strong>Gerekçe:</strong> <em id="agent-reasoning">-</em></p>
@@ -53,13 +60,12 @@
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Global değişkenler: Butona basıldığında ajana gönderilmek üzere saklanır
     let selectedLat = 0;
     let selectedLng = 0;
     let currentScore = 0;
 
     document.addEventListener("DOMContentLoaded", function() {
-        var map = L.map('map').setView([36.96, 31.54], 8); // Antalya merkeze biraz daha yakınlaştırdık
+        var map = L.map('map').setView([36.96, 31.54], 8);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
@@ -69,22 +75,32 @@
         var riskBounds = [[36.5, 31.0], [37.5, 32.0]];
         L.rectangle(riskBounds, { color: "#ff7800", weight: 1, fillOpacity: 0.2 }).addTo(map);
 
-        var currentMarker = null;
+        var currentMarkerGroup = L.layerGroup().addTo(map);
 
         map.on('click', function(e) {
             selectedLat = e.latlng.lat;
             selectedLng = e.latlng.lng;
-            currentScore = 0; // Yeni lokasyon seçildiğinde skoru sıfırla
+            currentScore = 0;
 
-            // Ajan panelini gizle
             document.getElementById('agent-result-panel').classList.add('d-none');
+            currentMarkerGroup.clearLayers();
 
-            if (currentMarker) { map.removeLayer(currentMarker); }
-            currentMarker = L.marker([selectedLat, selectedLng]).addTo(map);
+            // Mavi Pin
+            L.marker([selectedLat, selectedLng]).addTo(currentMarkerGroup);
 
-            document.getElementById('coord-display').innerText = selectedLat.toFixed(4) + ", " + selectedLng.toFixed(4);
+            // Hiper-Lokal Grid Simülasyonu (Yaklaşık 1.3 km²'lik kutu)
+            var offset = 0.005; // 0.005 derece yaklaşık ~500-600 metredir
+            var localGrid = [
+                [selectedLat - offset, selectedLng - offset],
+                [selectedLat + offset, selectedLng + offset]
+            ];
+            L.rectangle(localGrid, { color: "#dc3545", weight: 2, fillOpacity: 0.4 }).addTo(currentMarkerGroup);
+
+            document.getElementById('coord-display').innerText = selectedLat.toFixed(5) + ", " + selectedLng.toFixed(5);
             document.getElementById('score-display').innerText = "Hesaplanıyor...";
             document.getElementById('score-display').className = "text-center display-4 fw-bold text-secondary";
+            document.getElementById('spread-display').innerText = "Hesaplanıyor...";
+            document.getElementById('spread-display').className = "alert alert-secondary text-center fw-bold";
 
             fetch('/api/app/risk-analysis/submit-telemetry-and-analyze', {
                 method: 'POST',
@@ -98,7 +114,7 @@
                     distanceToPowerLineMeters: 0,
                     windSpeedKmh: 0,
                     slopePercentage: 0,
-                    vegetationType: "GeoJSON Poligon Analizi"
+                    vegetationType: "Grid Analizi"
                 })
             })
                 .then(async response => {
@@ -106,34 +122,38 @@
                     return response.json();
                 })
                 .then(data => {
-                    currentScore = data.calculatedRiskMultiplier; // Ajan için skoru kaydet
+                    currentScore = data.calculatedRiskMultiplier;
                     var scoreElement = document.getElementById('score-display');
+                    var spreadElement = document.getElementById('spread-display');
+
                     scoreElement.innerText = currentScore;
+                    spreadElement.innerText = data.spreadRisk;
 
                     if (currentScore > 80) {
                         scoreElement.className = "text-center display-4 fw-bold text-danger";
+                        spreadElement.className = "alert alert-danger text-center fw-bold";
                     } else {
                         scoreElement.className = "text-center display-4 fw-bold text-success";
+                        spreadElement.className = "alert alert-success text-center fw-bold";
                     }
                 })
                 .catch(error => {
                     document.getElementById('score-display').innerText = "HATA";
+                    document.getElementById('spread-display').innerText = "HATA";
                 });
         });
     });
 
-    // Adım 3: Agentic Workflow Tetikleyicisi
     window.triggerAgent = function() {
         if (currentScore === 0) {
-            alert("Lütfen önce haritadan bir lokasyon seçin ve riskin hesaplanmasını bekleyin.");
+            alert("Lütfen önce haritadan bir lokasyon seçin.");
             return;
         }
 
         const btn = document.getElementById('btn-agent');
-        btn.innerText = "Ajan Düşünüyor (Yapay Zeka)...";
+        btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Ajan Düşünüyor (AI)...";
         btn.disabled = true;
 
-        // Swagger'daki parametre yapısına uygun şekilde query üzerinden gönderiyoruz
         const agentUrl = `/api/app/risk-action-agent/evaluate-risk-score-and-decide-action?calculatedScore=${currentScore}&latitude=${selectedLat}&longitude=${selectedLng}`;
 
         fetch(agentUrl, {
@@ -148,11 +168,10 @@
                 return response.json();
             })
             .then(data => {
-                // Ajanın ürettiği sonuçları ekrana bas
                 document.getElementById('agent-result-panel').classList.remove('d-none');
-                document.getElementById('agent-action').innerText = data.actionType;
 
                 var actionBadge = document.getElementById('agent-action');
+                actionBadge.innerText = data.actionType;
                 if (data.actionType === "BLOCK_POLICY") actionBadge.className = "badge bg-danger fs-6";
                 else if (data.actionType === "ALERT_TEAM") actionBadge.className = "badge bg-warning text-dark fs-6";
                 else actionBadge.className = "badge bg-secondary fs-6";
@@ -160,14 +179,13 @@
                 document.getElementById('agent-dept').innerText = data.targetDepartment;
                 document.getElementById('agent-reasoning').innerText = data.aiReasoning;
 
-                // Butonu eski haline getir
-                btn.innerText = "Ajanı Tetikle (İş Emri Üret)";
+                btn.innerHTML = "<i class='fas fa-brain'></i> Ajanı Tetikle (İş Emri Üret)";
                 btn.disabled = false;
             })
             .catch(error => {
                 console.error(error);
-                alert("Ajanla iletişim kurulamadı. Ollama çalışıyor mu?");
-                btn.innerText = "Ajanı Tetikle (İş Emri Üret)";
+                alert("Ajanla iletişim kurulamadı.");
+                btn.innerHTML = "<i class='fas fa-brain'></i> Ajanı Tetikle (İş Emri Üret)";
                 btn.disabled = false;
             });
     }

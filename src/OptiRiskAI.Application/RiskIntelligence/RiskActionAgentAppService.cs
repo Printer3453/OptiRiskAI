@@ -46,10 +46,12 @@ namespace OptiRiskAI.RiskIntelligence
             // 2. Operasyonel Ajan (Semantic Kernel): Sadece iletişimi ve gerekçeyi (Reasoning) yazıyor.
             var prompt = $@"
 Sen bir Climate-FinTech şirketinde çalışan otonom risk operasyon ajanısın.
-Sistem, {latitude}, {longitude} lokasyonu için {calculatedScore}/100 iklim risk skoru hesapladı.
+Sistem, {latitude}, {longitude} lokasyonu için {calculatedScore}/100 Ateşleme Olasılığı (İklim Risk Skoru) hesapladı.
 Bu skor doğrultusunda '{determinedDepartment}' departmanına '{determinedAction}' iş emri gönderilmesine kesin karar verildi.
 
 Görev: Bu aksiyonun neden alındığını açıklayan, ilgili departmanın okuyacağı tek bir cümlelik profesyonel bir gerekçe (AiReasoning) yaz.
+ÇOK ÖNEMLİ KURAL: Eğer karar 'BLOCK_POLICY' ise, kuracağın cümlede mutlaka 'Loss Ratio (Hasar Oranı) dengesi' ve 'ZAS portföy rezervlerinin korunması' ifadelerini kullanmalısın.
+
 Sadece gerekçe cümlesini döndür, JSON formatı veya ek bir açıklama kullanma.";
 
             var result = await _kernel.InvokePromptAsync(prompt);

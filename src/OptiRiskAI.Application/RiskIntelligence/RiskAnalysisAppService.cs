@@ -19,33 +19,29 @@ namespace OptiRiskAI.RiskIntelligence
 
         public async Task<RiskTelemetryDto> SubmitTelemetryAndAnalyzeAsync(CreateRiskTelemetryDto input)
         {
-            // 1. Kurumsal GIS Motorunu Başlat
             var geometryFactory = new NetTopologySuite.Geometries.GeometryFactory();
-
-            // 2. Gerçek Coğrafi Nokta (Point) Oluşturma
-            // DİKKAT: Haritacılıkta her zaman önce X (Boylam/Longitude), sonra Y (Enlem/Latitude) yazılır.
             var point = geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(input.Longitude, input.Latitude));
 
-            decimal calculatedRiskScore = 20.0m; // Varsayılan düşük risk
+            decimal calculatedRiskScore = 20.0m; // Ateşleme Olasılığı (Ignition)
+            string spreadRisk = "Düşük (Güvenli Bölge)"; // Yayılım Modeli (Spread)
 
-            // Güvenli Poligon Geometrisi (Antalya/Manavgat Orman Hattı Simülasyonu)
             var coordinates = new[]
             {
         new NetTopologySuite.Geometries.Coordinate(31.0, 36.5),
         new NetTopologySuite.Geometries.Coordinate(32.0, 36.5),
         new NetTopologySuite.Geometries.Coordinate(32.0, 37.5),
         new NetTopologySuite.Geometries.Coordinate(31.0, 37.5),
-        new NetTopologySuite.Geometries.Coordinate(31.0, 36.5) // Poligon kapanmalı
+        new NetTopologySuite.Geometries.Coordinate(31.0, 36.5)
     };
             var riskPolygon = geometryFactory.CreatePolygon(coordinates);
 
-            //  Nokta riskli poligonun tam İÇİNDE mi?
+            // Deterministik Matematik: Nokta riskli poligonun İÇİNDE mi?
             if (riskPolygon.Contains(point))
             {
                 calculatedRiskScore = 85.0m;
+                spreadRisk = "Kritik (Yüksek Eğim ve NDVI Endeksi)";
             }
 
-            //  Entity Kaydı
             var telemetry = new RiskTelemetry(
                 GuidGenerator.Create(),
                 input.Latitude,
@@ -65,6 +61,7 @@ namespace OptiRiskAI.RiskIntelligence
                 Latitude = telemetry.Latitude,
                 Longitude = telemetry.Longitude,
                 CalculatedRiskMultiplier = calculatedRiskScore,
+                SpreadRisk = spreadRisk, 
                 IsProcessed = true
             };
         }

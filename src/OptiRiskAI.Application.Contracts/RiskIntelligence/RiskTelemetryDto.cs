@@ -17,5 +17,6 @@ namespace OptiRiskAI.RiskIntelligence
         public Guid? AppliedRiskRuleId { get; set; }
         public decimal? CalculatedRiskMultiplier { get; set; }
         public bool IsProcessed { get; set; }
+        public string SpreadRisk { get; set; } = string.Empty;
     }
 }
