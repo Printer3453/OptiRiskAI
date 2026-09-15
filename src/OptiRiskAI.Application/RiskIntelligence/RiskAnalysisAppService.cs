@@ -4,6 +4,12 @@ using System.Threading.Tasks;
 using NetTopologySuite.Geometries;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
+using System.Text.Json;
+using NetTopologySuite.Features;
+using NetTopologySuite.IO;
+using NetTopologySuite.IO.Converters;
+
+
 
 
 namespace OptiRiskAI.RiskIntelligence
@@ -22,24 +28,42 @@ namespace OptiRiskAI.RiskIntelligence
             var geometryFactory = new NetTopologySuite.Geometries.GeometryFactory();
             var point = geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(input.Longitude, input.Latitude));
 
-            decimal calculatedRiskScore = 20.0m; // Ateşleme Olasılığı (Ignition)
-            string spreadRisk = "Düşük (Güvenli Bölge)"; // Yayılım Modeli (Spread)
+            decimal calculatedRiskScore = 20.0m;
+            string spreadRisk = "Düşük (Güvenli Bölge)";
 
-            var coordinates = new[]
-            {
-        new NetTopologySuite.Geometries.Coordinate(31.0, 36.5),
-        new NetTopologySuite.Geometries.Coordinate(32.0, 36.5),
-        new NetTopologySuite.Geometries.Coordinate(32.0, 37.5),
-        new NetTopologySuite.Geometries.Coordinate(31.0, 37.5),
-        new NetTopologySuite.Geometries.Coordinate(31.0, 36.5)
-    };
-            var riskPolygon = geometryFactory.CreatePolygon(coordinates);
+            // 1. GERÇEK VERİ OKUMA: Hardcode bitti, Enterprise GIS entegrasyonu başladı!
+            var geoJsonPath = Path.Combine(AppContext.BaseDirectory, "GeoData", "AntalyaRisk.geojson");
 
-            // Deterministik Matematik: Nokta riskli poligonun İÇİNDE mi?
-            if (riskPolygon.Contains(point))
+            if (File.Exists(geoJsonPath))
             {
-                calculatedRiskScore = 85.0m;
-                spreadRisk = "Kritik (Yüksek Eğim ve NDVI Endeksi)";
+                string geoJsonText = await File.ReadAllTextAsync(geoJsonPath);
+
+                // 2. GeoJSON Parser Ayarları (.NET 8 Text.Json uyumlu)
+                var options = new JsonSerializerOptions();
+                options.Converters.Add(new GeoJsonConverterFactory(geometryFactory));
+
+                // 3. Dosyayı C# Feature Collection objesine dönüştür
+                var featureCollection = JsonSerializer.Deserialize<FeatureCollection>(geoJsonText, options);
+
+                if (featureCollection != null)
+                {
+                    // 4. Binlerce poligon olsa bile hepsini döner ve noktanın poligon içinde olup olmadığını bulur
+                    foreach (var feature in featureCollection)
+                    {
+                        if (feature.Geometry.Contains(point))
+                        {
+                            calculatedRiskScore = 85.0m;
+                            // GeoJSON içindeki gerçek 'properties' verisini (Örn: Kritik Yayılım) dinamik olarak alabiliriz
+                            spreadRisk = feature.Attributes["riskType"]?.ToString() ?? "Kritik (Yüksek Eğim)";
+                            break; // Riski bulduk, diğer poligonlara bakmaya gerek yok
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Dosya bulunamazsa sistemi çökertme, logla ve güvenli skordan devam et
+                spreadRisk = "Sistem Uyarısı: GeoJSON veritabanına ulaşılamadı!";
             }
 
             var telemetry = new RiskTelemetry(
@@ -61,7 +85,7 @@ namespace OptiRiskAI.RiskIntelligence
                 Latitude = telemetry.Latitude,
                 Longitude = telemetry.Longitude,
                 CalculatedRiskMultiplier = calculatedRiskScore,
-                SpreadRisk = spreadRisk, 
+                SpreadRisk = spreadRisk,
                 IsProcessed = true
             };
         }

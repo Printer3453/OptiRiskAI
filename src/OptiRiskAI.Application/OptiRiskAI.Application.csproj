@@ -17,6 +17,7 @@
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.80.1" />
     <PackageReference Include="NetTopologySuite" Version="2.6.0" />
     <PackageReference Include="NetTopologySuite.IO.GeoJSON" Version="4.0.0" />
+    <PackageReference Include="NetTopologySuite.IO.GeoJSON4STJ" Version="4.0.0" />
     <PackageReference Include="Volo.Abp.PermissionManagement.Application" Version="10.6.0" />
     <PackageReference Include="Volo.Abp.FeatureManagement.Application" Version="10.6.0" />
     <PackageReference Include="Volo.Abp.SettingManagement.Application" Version="10.6.0" />
@@ -24,6 +25,12 @@
     <PackageReference Include="Volo.Abp.Identity.Application" Version="10.6.0" />
     <PackageReference Include="Volo.Abp.TenantManagement.Application" Version="10.6.0" />
     <PackageReference Include="MiniExcel" Version="1.41.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="GeoData\AntalyaRisk.geojson">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
