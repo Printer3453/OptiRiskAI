@@ -31,38 +31,38 @@ namespace OptiRiskAI.RiskIntelligence
             decimal calculatedRiskScore = 20.0m;
             string spreadRisk = "Düşük (Güvenli Bölge)";
 
-            // 1. GERÇEK VERİ OKUMA: Hardcode bitti, Enterprise GIS entegrasyonu başladı!
+            
             var geoJsonPath = Path.Combine(AppContext.BaseDirectory, "GeoData", "AntalyaRisk.geojson");
 
             if (File.Exists(geoJsonPath))
             {
                 string geoJsonText = await File.ReadAllTextAsync(geoJsonPath);
 
-                // 2. GeoJSON Parser Ayarları (.NET 8 Text.Json uyumlu)
+                
                 var options = new JsonSerializerOptions();
                 options.Converters.Add(new GeoJsonConverterFactory(geometryFactory));
 
-                // 3. Dosyayı C# Feature Collection objesine dönüştür
+                
                 var featureCollection = JsonSerializer.Deserialize<FeatureCollection>(geoJsonText, options);
 
                 if (featureCollection != null)
                 {
-                    // 4. Binlerce poligon olsa bile hepsini döner ve noktanın poligon içinde olup olmadığını bulur
+                    
                     foreach (var feature in featureCollection)
                     {
                         if (feature.Geometry.Contains(point))
                         {
                             calculatedRiskScore = 85.0m;
-                            // GeoJSON içindeki gerçek 'properties' verisini (Örn: Kritik Yayılım) dinamik olarak alabiliriz
+                            
                             spreadRisk = feature.Attributes["riskType"]?.ToString() ?? "Kritik (Yüksek Eğim)";
-                            break; // Riski bulduk, diğer poligonlara bakmaya gerek yok
+                            break; 
                         }
                     }
                 }
             }
             else
             {
-                // Dosya bulunamazsa sistemi çökertme, logla ve güvenli skordan devam et
+                
                 spreadRisk = "Sistem Uyarısı: GeoJSON veritabanına ulaşılamadı!";
             }
 
