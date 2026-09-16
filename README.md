@@ -1,67 +1,32 @@
-# OptiRiskAI
+OptiRisk AI - MVP
+OptiRisk AI, iklim ve orman yangını risklerini coğrafi bilgi sistemleri (GIS) ve otonom yapay zeka (Agentic Workflow) kullanarak analiz eden bir Kavram Kanıtı (PoC) projesidir.
 
-## About this solution
+Projenin temel mimari amacı; deterministik mekansal hesaplamalar ile Büyük Dil Modellerinin (LLM) karar alma süreçlerini Domain-Driven Design (DDD) prensiplerine uygun olarak, birbirine karıştırmadan (tam izole) çalıştırabilmektir.
 
-This is a layered startup solution based on [Domain Driven Design (DDD)](https://abp.io/docs/latest/framework/architecture/domain-driven-design) practises. All the fundamental ABP modules are already installed. Check the [Application Startup Template](https://abp.io/docs/latest/solution-templates/layered-web-application) documentation for more info.
+📌 Proje Ne Yapıyor?
+Mekansal Analiz: Kullanıcının harita üzerinden (Leaflet.js) seçtiği nokta, NetTopologySuite ile GeoData klasöründeki statik GeoJSON poligon verileriyle (Point-in-Polygon) eşleştirilir.
 
-### Pre-requirements
+Deterministik Skorlama: Yapay zeka kullanılmadan, tamamen poligon kesişimine (Contains) dayalı olarak "Ateşleme Olasılığı" ve "Yayılım Riski" skoru üretilir.
 
-* [.NET10.0+ SDK](https://dotnet.microsoft.com/download/dotnet)
-* [Node v18 or 20](https://nodejs.org/en)
+Otonom Aksiyon (LLM): Çıkan kesin skor, Semantic Kernel üzerinden yerel LLM'e (Ollama) iletilir. Ajan, sistemden gelen skora göre kurumsal bir iş emri ve aksiyon kararı (Örn: BLOCK_POLICY, LOG_ONLY) üretir.
 
-### Configurations
+🛠️ <img width="1576" height="889" alt="Ekran görüntüsü 2026-09-16 002932" src="https://github.com/user-attachments/assets/b45f5dac-99a3-4577-8ae1-431383371a32" /><img width="1585" height="868" alt="Ekran görüntüsü 2026-09-16 002917" src="https://github.com/user-attachments/assets/d488a2e2-e5d9-45d4-8f82-3deab8640651" />
 
-The solution comes with a default configuration that works out of the box. However, you may consider to change the following configuration before running your solution:
+Altyapı: .NET 10.0, C#, ABP Framework (Clean Architecture)
 
-* Check the `ConnectionStrings` in `appsettings.json` files under the `OptiRiskAI.Web` and `OptiRiskAI.DbMigrator` projects and change it if you need.
+GIS Motoru: NetTopologySuite, System.Text.Json (GeoJSON Parsing)
 
-### Before running the application
+AI Entegrasyonu: Microsoft Semantic Kernel, Ollama (Local-First)
 
-* Run `abp install-libs` command on your solution folder to install client-side package dependencies. This step is automatically done when you create a new solution, if you didn't especially disabled it. However, you should run it yourself if you have first cloned this solution from your source control, or added a new client-side package dependency to your solution.
-* Run `OptiRiskAI.DbMigrator` to create the initial database. This step is also automatically done when you create a new solution, if you didn't especially disabled it. This should be done in the first run. It is also needed if a new database migration is added to the solution later.
+Frontend: ASP.NET Core MVC / Razor Pages, Bootstrap 5, Leaflet.js
 
-#### Generating a Signing Certificate
+Veritabanı: SQLite, Entity Framework Core
 
-In the production environment, you need to use a production signing certificate. ABP Framework sets up signing and encryption certificates in your application and expects an `openiddict.pfx` file in your application.
+🚀 Hızlı Başlangıç
+Depoyu klonlayıp bağımlılıkları yükleyin: dotnet restore
 
-To generate a signing certificate, you can use the following command:
+Veritabanı migrasyonlarını uygulayın: dotnet ef database update
 
-```bash
-dotnet dev-certs https -v -ep openiddict.pfx -p a2477137-e66a-4298-9575-958a32031954
-```
+Ollama'yı arka planda çalıştırın.
 
-> `a2477137-e66a-4298-9575-958a32031954` is the password of the certificate, you can change it to any password you want.
-
-It is recommended to use **two** RSA certificates, distinct from the certificate(s) used for HTTPS: one for encryption, one for signing.
-
-For more information, please refer to: [OpenIddict Certificate Configuration](https://documentation.openiddict.com/configuration/encryption-and-signing-credentials.html#registering-a-certificate-recommended-for-production-ready-scenarios)
-
-> Also, see the [Configuring OpenIddict](https://abp.io/docs/latest/Deployment/Configuring-OpenIddict#production-environment) documentation for more information.
-
-### Solution structure
-
-This is a layered monolith application that consists of the following applications:
-
-* `OptiRiskAI.DbMigrator`: A console application which applies the migrations and also seeds the initial data. It is useful on development as well as on production environment.
-* `OptiRiskAI.Web`: ASP.NET Core MVC / Razor Pages application that is the essential web application of the solution.
-
-#### Test Projects
-
-The `test` folder contains the following test projects:
-
-* `OptiRiskAI.Application.Tests`: Application layer tests.
-* `OptiRiskAI.Domain.Tests`: Domain layer tests.
-* `OptiRiskAI.EntityFrameworkCore.Tests`: Entity Framework Core integration tests.
-
-
-
-## Deploying the application
-
-Deploying an ABP application follows the same process as deploying any .NET or ASP.NET Core application. However, there are important considerations to keep in mind. For detailed guidance, refer to ABP's [deployment documentation](https://abp.io/docs/latest/Deployment/Index).
-
-### Additional resources
-
-You can see the following resources to learn more about your solution and the ABP Framework:
-
-* [Web Application Development Tutorial](https://abp.io/docs/latest/tutorials/book-store/part-1)
-* [Application Startup Template](https://abp.io/docs/latest/startup-templates/application/index)
+Web projesini ayağa kaldırın: dotnet run --project src/OptiRiskAI.Web
