@@ -22,5 +22,8 @@ namespace OptiRiskAI;
     )]
 public class OptiRiskAIApplicationModule : AbpModule
 {
-
+    public override void ConfigureServices(ServiceConfigurationContext context)
+    {
+        context.Services.AddHttpClient("OpenWeatherClient");
+    }
 }
