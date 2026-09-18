@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Application.Services;
 
-OptiRiskAIApplicationModule
+
 namespace OptiRiskAI.OpenWeather;
 
 public class OpenWeatherService : ApplicationService, IOpenWeatherService
