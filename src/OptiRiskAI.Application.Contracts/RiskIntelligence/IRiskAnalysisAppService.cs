@@ -10,7 +10,7 @@ namespace OptiRiskAI.RiskIntelligence
     public interface IRiskAnalysisAppService : IApplicationService
     {
         Task<RiskTelemetryDto> SubmitTelemetryAndAnalyzeAsync(CreateRiskTelemetryDto input);
+        Task<List<RiskTelemetryDto>> GetLatestSimulationsAsync(int maxCount = 50);
 
-        
     }
 }

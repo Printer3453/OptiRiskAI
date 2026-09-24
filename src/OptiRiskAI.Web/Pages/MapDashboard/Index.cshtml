@@ -1,6 +1,6 @@
 ﻿@page
 @{
-    ViewData["Title"] = "OptiRisk AI - Otonom Risk Karar Paneli";
+    ViewData["Title"] = "OptiRisk AI - Komuta Kontrol Merkezi";
 }
 
 <!-- Leaflet CSS & FontAwesome -->
@@ -8,92 +8,97 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
 <style>
-    .glass-panel {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(0,0,0,0.1);
+    .terminal-container {
+        background-color: #0d1117;
+        color: #58d68d;
+        font-family: 'Courier New', Courier, monospace;
+        height: 450px;
+        overflow-y: auto;
+        padding: 15px;
         border-radius: 8px;
+        font-size: 0.85rem;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
     }
-    .status-pulse {
-        animation: pulse 2s infinite;
+
+    .log-entry {
+        margin-bottom: 8px;
+        padding-bottom: 5px;
+        border-bottom: 1px dashed #283747;
     }
-    @@keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+
+    .log-time {
+        color: #85c1e9;
+    }
+
+    .log-critical {
+        color: #e74c3c;
+        font-weight: bold;
+    }
+
+    .log-safe {
+        color: #58d68d;
+    }
+
+    .radar-pulse {
+        animation: pulse-ring 2s infinite;
+    }
+
+    @@keyframes pulse-ring {
+        0% {
+            box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
+        }
+
+        70% {
+            box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
+        }
     }
 </style>
 
 <div class="row mt-3">
-    <!-- Harita Paneli -->
+    <!-- Sol Panel: Canlı Harita -->
     <div class="col-md-8">
         <div class="card shadow-sm border-0">
             <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
-                <span><i class="fa-solid fa-satellite"></i> OptiRisk ZAS - Canlı Analiz Haritası</span>
-                <span class="badge bg-primary">Canlı Bağlantı: Open-Meteo & ML.NET</span>
+                <span><i class="fa-solid fa-satellite-dish"></i> ZAS Otonom Uydu Radarı</span>
+                <button id="btn-radar" class="btn btn-sm btn-primary fw-bold radar-pulse" onclick="toggleRadar()">
+                    <i class="fa-solid fa-play"></i> Otonom Radarı Başlat
+                </button>
             </div>
             <div class="card-body p-0 position-relative">
                 <div id="map" style="height: 650px; width: 100%; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;"></div>
 
-                <!-- Harita İçi Float Uyarı Paneli -->
-                <div id="map-warning-panel" class="position-absolute top-0 end-0 m-3 p-3 glass-panel d-none" style="z-index: 1000; max-width: 300px;">
-                    <h6 class="text-danger fw-bold mb-1"><i class="fa-solid fa-triangle-exclamation"></i> Otonom Müdahale</h6>
-                    <p id="map-warning-text" class="small mb-0 fw-bold">Kritik FWI skoru algılandı. Ajan devreye giriyor...</p>
+                <div id="radar-status" class="position-absolute top-0 start-0 m-3 p-2 bg-dark text-white rounded d-none" style="z-index: 1000; opacity: 0.9;">
+                    <i class="fa-solid fa-circle-notch fa-spin text-primary"></i> <span class="small fw-bold">Otonom Tarama Aktif...</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Analiz & Sonuç Paneli -->
+    <!-- Sağ Panel: Komuta Terminali -->
     <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
-                <span><i class="fa-solid fa-microchip"></i> Aktüeryal Karar Motoru</span>
-                <span class="badge bg-success" style="font-size: 0.75rem;">Otonom Mod</span>
+        <div class="card shadow-sm border-0 h-100 bg-dark">
+            <div class="card-header bg-black text-white fw-bold d-flex justify-content-between align-items-center border-bottom border-secondary">
+                <span><i class="fa-solid fa-terminal"></i> AI Ajan Canlı Günlüğü</span>
+                <span class="badge bg-danger" style="font-size: 0.70rem;">CANLI (LIVE)</span>
             </div>
-            <div class="card-body">
-                <p class="text-muted small border-bottom pb-2"><i class="fa-solid fa-crosshairs text-primary"></i> Harita üzerinden bir bölge (grid) seçerek ML.NET simülasyonunu başlatın.</p>
-
-                <!-- Koordinat -->
-                <div class="d-flex justify-content-between align-items-center mt-3">
-                    <h6 class="fw-bold text-secondary mb-0">Seçilen Koordinat:</h6>
-                    <span id="coord-display" class="font-monospace fw-bold bg-light px-2 py-1 border rounded">-</span>
-                </div>
-
-                <!-- Meteoroloji (Yeni) -->
-                <div id="meteo-panel" class="mt-3 p-3 bg-light rounded border d-none">
-                    <h6 class="fw-bold text-secondary mb-2"><i class="fa-solid fa-cloud-sun text-info"></i> Anlık Meteoroloji (Open-Meteo)</h6>
-                    <div class="d-flex justify-content-between small fw-bold">
-                        <span>🌡️ Sıcaklık: <span id="temp-display" class="text-dark">-</span>°C</span>
-                        <span>💧 Nem: %<span id="hum-display" class="text-dark">-</span></span>
+            <div class="card-body p-2">
+                <!-- Matrix Terminali -->
+                <div id="terminal" class="terminal-container">
+                    <div class="text-center text-muted mb-3">
+                        <i class="fa-brands fa-space-awesome fa-2x mb-2"></i><br />
+                        Sistem Hazır. Otonom motor veya manuel giriş bekleniyor...
                     </div>
                 </div>
 
-                <!-- FWI Skoru -->
-                <h6 class="fw-bold mt-4 text-secondary text-center">🔥 Aktüeryal FWI Risk Skoru:</h6>
-                <div class="d-flex justify-content-center mt-2 mb-3">
-                    <div id="score-circle" class="rounded-circle d-flex align-items-center justify-content-center shadow" style="width: 120px; height: 120px; border: 5px solid #ccc; background-color: #f8f9fa;">
-                        <h2 id="score-display" class="mb-0 fw-bold text-secondary">0.0</h2>
-                    </div>
-                </div>
+                <hr class="border-secondary my-2" />
 
-                <!-- Harita Filtresi Durumu -->
-                <p id="spread-display" class="alert alert-secondary text-center fw-bold py-2">-</p>
-
-                <hr />
-                <!-- Semantic Kernel Otonom Ajan Tetikleyici -->
-                <button id="btn-agent" class="btn btn-outline-dark w-100 mt-2 fw-bold" onclick="triggerAgent()" disabled>
-                    <i class="fas fa-brain"></i> OptiRisk Otonom Ajanına (AI) Karar Sor
-                </button>
-
-                <!-- Ajan Sonuç Paneli -->
-                <div id="agent-result-panel" class="mt-4 d-none">
-                    <div class="alert alert-info border-1 border-info shadow-sm p-3">
-                        <h6 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-robot"></i> LLM Karar Mekanizması</h6>
-                        <p class="mb-2 small text-dark"><strong>Aksiyon Tipi:</strong> <span id="agent-action" class="badge bg-dark fs-6">-</span></p>
-                        <p class="mb-2 small text-dark"><strong>İlgili Birim:</strong> <span id="agent-dept" class="fw-bold">-</span></p>
-                        <p class="mb-0 small text-dark"><strong>Ajanın Gerekçesi (Reasoning):</strong> <br /><em id="agent-reasoning" class="text-secondary">-</em></p>
-                    </div>
+                <!-- Manuel Kontrol Bilgisi -->
+                <div class="p-2 text-secondary small">
+                    <i class="fa-solid fa-circle-info"></i> Otonom motor çalışırken haritaya tıklayarak anlık manuel (override) analiz yapabilirsiniz.
                 </div>
             </div>
         </div>
@@ -103,163 +108,167 @@
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    let selectedLat = 0;
-    let selectedLng = 0;
-    let currentScore = 0;
+    let map, markerGroup;
+    let isRadarActive = false;
+    let radarInterval;
+    let processedGuids = new Set(); // Aynı logları tekrar yazdırmamak için
 
     document.addEventListener("DOMContentLoaded", function() {
-        // Haritayı Antalya/Manavgat merkeze odakla
-        var map = L.map('map').setView([36.78, 31.43], 9);
+        // Haritayı Antalya Merkeze Odakla
+        map = L.map('map').setView([36.85, 31.40], 9);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+        // Manavgat Odak Bölgesi
+        L.rectangle([[36.65, 31.20], [37.10, 31.70]], { color: "#28a745", weight: 2, fillOpacity: 0.1 }).addTo(map);
+        markerGroup = L.layerGroup().addTo(map);
 
-        // Manavgat Orman Sınırı (Görsel Simülasyon)
-        var riskBounds = [[36.65, 31.20], [37.10, 31.70]];
-        L.rectangle(riskBounds, { color: "#28a745", weight: 2, fillOpacity: 0.1 }).addTo(map);
-
-        var currentMarkerGroup = L.layerGroup().addTo(map);
-
+        // Manuel Tıklama (Override)
         map.on('click', function(e) {
-            selectedLat = e.latlng.lat;
-            selectedLng = e.latlng.lng;
-            currentScore = 0;
-
-            // UI Reset
-            document.getElementById('agent-result-panel').classList.add('d-none');
-            document.getElementById('meteo-panel').classList.add('d-none');
-            document.getElementById('map-warning-panel').classList.add('d-none');
-            document.getElementById('btn-agent').disabled = true;
-            document.getElementById('btn-agent').className = "btn btn-outline-dark w-100 mt-2 fw-bold";
-
-            var scoreCircle = document.getElementById('score-circle');
-            var scoreText = document.getElementById('score-display');
-            var spreadAlert = document.getElementById('spread-display');
-
-            scoreCircle.style.borderColor = "#ccc";
-            scoreCircle.classList.remove('status-pulse');
-            scoreText.innerText = "...";
-            scoreText.className = "mb-0 fw-bold text-secondary";
-            spreadAlert.innerText = "Yapay Zeka Analiz Ediyor...";
-            spreadAlert.className = "alert alert-warning text-center fw-bold py-2";
-
-            currentMarkerGroup.clearLayers();
-
-            // Tıklanan Yere Analiz Çerçevesi Çiz
-            L.marker([selectedLat, selectedLng]).addTo(currentMarkerGroup);
-            var offset = 0.006;
-            var localGrid = [
-                [selectedLat - offset, selectedLng - offset],
-                [selectedLat + offset, selectedLng + offset]
-            ];
-            L.rectangle(localGrid, { color: "#007bff", weight: 2, fillOpacity: 0.2 }).addTo(currentMarkerGroup);
-
-            document.getElementById('coord-display').innerText = selectedLat.toFixed(4) + ", " + selectedLng.toFixed(4);
-
-            // Backend API Tetikle (GIS -> OpenMeteo -> ML.NET)
-            fetch('/api/app/risk-analysis/submit-telemetry-and-analyze', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': abp.security.antiForgery.getToken()
-                },
-                body: JSON.stringify({
-                    latitude: selectedLat,
-                    longitude: selectedLng,
-                    distanceToPowerLineMeters: 0,
-                    windSpeedKmh: 0,
-                    slopePercentage: 0,
-                    vegetationType: "Otonom Analiz"
-                })
-            })
-            .then(async response => {
-                if (!response.ok) throw new Error("API Hatası");
-                return response.json();
-            })
-            .then(data => {
-                currentScore = data.calculatedRiskMultiplier;
-
-                // Meteo Verilerini Göster
-                document.getElementById('temp-display').innerText = data.temperature || "?";
-                document.getElementById('hum-display').innerText = data.humidity || "?";
-                document.getElementById('meteo-panel').classList.remove('d-none');
-
-                scoreText.innerText = currentScore.toFixed(2);
-                spreadAlert.innerText = data.spreadRisk;
-                document.getElementById('btn-agent').disabled = false;
-
-                // Literatür FWI Eşik Değerleri (30 FWI = Kritik Risk)
-                if (currentScore >= 30) {
-                    scoreCircle.style.borderColor = "#dc3545"; // Kırmızı
-                    scoreCircle.classList.add('status-pulse');
-                    scoreText.className = "mb-0 fw-bold text-danger";
-                    spreadAlert.className = "alert alert-danger text-center fw-bold py-2";
-                    document.getElementById('btn-agent').className = "btn btn-danger w-100 mt-2 fw-bold";
-
-                    document.getElementById('map-warning-text').innerText = "FWI: " + currentScore.toFixed(2) + " seviyesinde. Lütfen ajanı tetikleyerek otonom eylem kararı alın.";
-                    document.getElementById('map-warning-panel').classList.remove('d-none');
-                } else if(currentScore > 0) {
-                    scoreCircle.style.borderColor = "#28a745"; // Yeşil
-                    scoreText.className = "mb-0 fw-bold text-success";
-                    spreadAlert.className = "alert alert-success text-center fw-bold py-2";
-                    document.getElementById('btn-agent').className = "btn btn-primary w-100 mt-2 fw-bold";
-                } else {
-                    // GIS Filtresine Takıldı (Orman Dışı)
-                    scoreCircle.style.borderColor = "#6c757d"; // Gri
-                    scoreText.className = "mb-0 fw-bold text-secondary";
-                    spreadAlert.className = "alert alert-secondary text-center fw-bold py-2";
-                }
-            })
-            .catch(error => {
-                scoreText.innerText = "HATA";
-                spreadAlert.innerText = "Veri çekilemedi. Bağlantıyı kontrol edin.";
-                spreadAlert.className = "alert alert-danger text-center fw-bold py-2";
-            });
+            triggerManualAnalysis(e.latlng.lat, e.latlng.lng);
         });
     });
 
-    // Semantic Kernel Ajan Tetikleyicisi
-    window.triggerAgent = function() {
-        if (currentScore === 0) return;
+    // Otonom Radarı Aç/Kapat
+    function toggleRadar() {
+        const btn = document.getElementById('btn-radar');
+        const status = document.getElementById('radar-status');
 
-        const btn = document.getElementById('btn-agent');
-        btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> LLM Ajanı Değerlendiriyor...";
-        btn.disabled = true;
+        isRadarActive = !isRadarActive;
 
-        const agentUrl = `/api/app/risk-action-agent/evaluate-risk-score-and-decide-action?calculatedScore=${currentScore}&latitude=${selectedLat}&longitude=${selectedLng}`;
+        if (isRadarActive) {
+            btn.innerHTML = "<i class='fa-solid fa-stop'></i> Radarı Durdur";
+            btn.className = "btn btn-sm btn-danger fw-bold";
+            status.classList.remove('d-none');
 
-        fetch(agentUrl, {
+            writeToTerminal("SİSTEM", "Otonom grid tarama motoru başlatıldı. Arka plan işçisi (Worker) dinleniyor...", false);
+
+            // İlk çekim ve döngü (3 saniyede bir)
+            fetchLiveFeed();
+            radarInterval = setInterval(fetchLiveFeed, 3000);
+        } else {
+            btn.innerHTML = "<i class='fa-solid fa-play'></i> Otonom Radarı Başlat";
+            btn.className = "btn btn-sm btn-primary fw-bold radar-pulse";
+            status.classList.add('d-none');
+            clearInterval(radarInterval);
+            writeToTerminal("SİSTEM", "Otonom radar duraklatıldı.", false);
+        }
+    }
+
+    // Backend'den son 10 kaydı çek (Sadece yeni olanları işle)
+    function fetchLiveFeed() {
+        fetch('/api/app/risk-analysis/latest-simulations?maxCount=10', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        })
+            .then(response => {
+                if (!response.ok) throw new Error("Köprü API hatası");
+                return response.json();
+            })
+            .then(data => {
+                // Eskiden yeniye doğru yazdırmak için diziyi tersine çevir
+                const reversedData = data.reverse();
+
+                reversedData.forEach(item => {
+                    // Eğer bu ID'yi daha önce ekranda gösterdiysek atla
+                    if (!processedGuids.has(item.id)) {
+                        processedGuids.add(item.id);
+                        processIncomingTelemetry(item, "OTONOM");
+                    }
+                });
+            })
+            .catch(err => console.warn("Live feed fetch error:", err));
+    }
+
+    // Gelen veriyi haritaya çiz ve terminale yaz
+    function processIncomingTelemetry(data, source) {
+        const score = data.calculatedRiskMultiplier;
+        const lat = data.latitude.toFixed(4);
+        const lon = data.longitude.toFixed(4);
+
+        let color = "#6c757d"; // Gri (Güvenli Bölge)
+        let isCritical = false;
+
+        if (score >= 30) {
+            color = "#e74c3c"; // Kırmızı
+            isCritical = true;
+        } else if (score > 0) {
+            color = "#f1c40f"; // Sarı
+        }
+
+        // Haritaya Nokta Bırak
+        const circleMarker = L.circleMarker([data.latitude, data.longitude], {
+            radius: 8,
+            fillColor: color,
+            color: "#fff",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.8
+        }).addTo(markerGroup);
+
+        circleMarker.bindPopup(`<b>Kaynak:</b> ${source}<br/><b>FWI:</b> ${score.toFixed(2)}`).openPopup();
+
+        // Terminale Log Düş
+        const logText = `Grid (${lat}, ${lon}) tarandı. FWI: ${score.toFixed(2)} - ${data.spreadRisk}`;
+        writeToTerminal(source, logText, isCritical);
+
+        // Kritikse Ajan Logunu Simüle Et (Worker zaten arkada ajanı tetikliyor)
+        if (isCritical) {
+            setTimeout(() => {
+                writeToTerminal("AJAN", `Kritik risk (${score.toFixed(2)}) algılandı. BLOCK_POLICY otonom olarak devrede. İlgili birimler uyarıldı.`, true);
+            }, 800); // 800ms gecikme efekti
+        }
+    }
+
+    // Manuel Tıklama API Çağrısı
+    function triggerManualAnalysis(lat, lng) {
+        writeToTerminal("MANUEL", `Koordinat (${lat.toFixed(4)}, ${lng.toFixed(4)}) için anlık analiz başlatıldı...`, false);
+
+        // Sadece geçici bir mavi pin koy
+        L.marker([lat, lng]).addTo(markerGroup);
+
+        fetch('/api/app/risk-analysis/submit-telemetry-and-analyze', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'RequestVerificationToken': abp.security.antiForgery.getToken()
-            }
+            },
+            body: JSON.stringify({
+                latitude: lat,
+                longitude: lng,
+                distanceToPowerLineMeters: 0,
+                windSpeedKmh: 0,
+                slopePercentage: 0,
+                vegetationType: "Manuel Gözlem"
+            })
         })
-        .then(async response => {
-            if (!response.ok) throw new Error("Ajan API Hatası");
-            return response.json();
-        })
-        .then(data => {
-            document.getElementById('agent-result-panel').classList.remove('d-none');
+            .then(response => response.json())
+            .then(data => {
+                // API'den dönen cevabı doğrudan işle (ID'yi listeye ekle ki radar tekrar çekmesin)
+                processedGuids.add(data.id);
+                processIncomingTelemetry(data, "MANUEL");
+            })
+            .catch(err => writeToTerminal("HATA", "Manuel analiz başarısız.", true));
+    }
 
-            var actionBadge = document.getElementById('agent-action');
-            actionBadge.innerText = data.actionType;
-            if (data.actionType === "BLOCK_POLICY") actionBadge.className = "badge bg-danger fs-6";
-            else if (data.actionType === "ALERT_TEAM") actionBadge.className = "badge bg-warning text-dark fs-6";
-            else actionBadge.className = "badge bg-success fs-6";
+    // Terminale Yazı Yazdırma Fonksiyonu
+    function writeToTerminal(tag, message, isCritical) {
+        const terminal = document.getElementById('terminal');
+        const time = new Date().toLocaleTimeString('tr-TR');
 
-            document.getElementById('agent-dept').innerText = data.targetDepartment;
-            document.getElementById('agent-reasoning').innerText = data.aiReasoning;
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
 
-            btn.innerHTML = "<i class='fas fa-check-circle'></i> Ajan Kararı Alındı";
-            btn.className = "btn btn-success w-100 mt-2 fw-bold";
-        })
-        .catch(error => {
-            alert("Ajanla iletişim kurulamadı. LLM (Ollama) servisinin açık olduğundan emin olun.");
-            btn.innerHTML = "<i class='fas fa-brain'></i> Tekrar Dene";
-            btn.disabled = false;
-        });
+        const textClass = isCritical ? 'log-critical' : 'log-safe';
+
+        entry.innerHTML = `
+                <span class="log-time">[${time}]</span>
+                <strong class="text-warning">[${tag}]</strong>
+                <span class="${textClass}">${message}</span>
+            `;
+
+        terminal.appendChild(entry);
+
+        // Otomatik en alta kaydır
+        terminal.scrollTop = terminal.scrollHeight;
     }
 </script>

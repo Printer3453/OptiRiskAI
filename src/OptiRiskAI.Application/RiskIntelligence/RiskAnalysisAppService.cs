@@ -1,18 +1,16 @@
-﻿using NetTopologySuite.Features;
-using NetTopologySuite.Geometries;
-using NetTopologySuite.IO;
-using NetTopologySuite.IO.Converters;
-using OptiRiskAI.OpenMeteo;
-using System;
+﻿using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
+using OptiRiskAI.OpenMeteo;
 using System.Threading.Tasks;
-using Volo.Abp.Application.Services;
+using OptiRiskAI_Application;
+using NetTopologySuite.Features;
+using System.Collections.Generic;
 using Volo.Abp.Domain.Repositories;
 using Microsoft.Extensions.Logging;
-using OptiRiskAI_Application;
-
-
+using Volo.Abp.Application.Services;
+using NetTopologySuite.IO.Converters;
 
 namespace OptiRiskAI.RiskIntelligence
 {
@@ -136,5 +134,38 @@ namespace OptiRiskAI.RiskIntelligence
                 Humidity = currentHum
             };
         }
+
+        public async Task<List<RiskTelemetryDto>> GetLatestSimulationsAsync(int maxCount = 50)
+        {
+            // Veritabanından en son oluşturulan 'maxCount' kadar kaydı çek (Tarihe göre azalan sırada)
+            var latestTelemetries = await _telemetryRepository.GetListAsync(); // Tüm listeyi alır (Optimizasyon için IQueryable kullanılabilir ama MVP için yeterli)
+
+            // System.Linq kullanarak en son kayıtları sırala ve filtrele
+            var orderedTelemetries = latestTelemetries
+                .OrderByDescending(x => x.CreationTime)
+                .Take(maxCount)
+                .ToList();
+
+            var result = new List<RiskTelemetryDto>();
+
+            foreach (var telemetry in orderedTelemetries)
+            {
+                // DTO dönüşümünü manuel yapıyoruz
+                result.Add(new RiskTelemetryDto
+                {
+                    Id = telemetry.Id,
+                    Latitude = telemetry.Latitude,
+                    Longitude = telemetry.Longitude,
+                    CalculatedRiskMultiplier = telemetry.CalculatedRiskMultiplier,
+                    SpreadRisk = telemetry.CalculatedRiskMultiplier >= 30 ? "Kritik Yayılım" : "Düşük (Güvenli Bölge)", // UI için varsayılan
+                    IsProcessed = telemetry.IsProcessed,
+                    // Not: Geçmiş verilerde Anlık Meteoroloji (Temp/Hum) veritabanında tutulmadığı için null dönecek
+                });
+            }
+
+            return result;
+        }
+
+
     }
 }
