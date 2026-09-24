@@ -2,7 +2,7 @@
 using NetTopologySuite.Geometries;
 using NetTopologySuite.IO;
 using NetTopologySuite.IO.Converters;
-using OptiRiskAI.OpenWeather; 
+using OptiRiskAI.OpenMeteo;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -10,20 +10,23 @@ using System.Threading.Tasks;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 using Microsoft.Extensions.Logging;
+using OptiRiskAI_Application;
+
+
 
 namespace OptiRiskAI.RiskIntelligence
 {
     public class RiskAnalysisAppService : ApplicationService, IRiskAnalysisAppService
     {
         private readonly IRepository<RiskTelemetry, Guid> _telemetryRepository;
-        private readonly IOpenWeatherService _openWeatherService; // Dış API servisi
+        private readonly IOpenMeteoService _openMeteoService; 
 
         public RiskAnalysisAppService(
             IRepository<RiskTelemetry, Guid> telemetryRepository,
-            IOpenWeatherService openWeatherService)
+            IOpenMeteoService openMeteoService) 
         {
             _telemetryRepository = telemetryRepository;
-            _openWeatherService = openWeatherService;
+            _openMeteoService = openMeteoService;
         }
 
         public async Task<RiskTelemetryDto> SubmitTelemetryAndAnalyzeAsync(CreateRiskTelemetryDto input)
@@ -51,7 +54,7 @@ namespace OptiRiskAI.RiskIntelligence
                 {
                     foreach (var feature in featureCollection)
                     {
-                        // 1. AŞAMA: Coğrafi (GIS) Filtreleme
+                        // Coğrafi (GIS) Filtreleme
                         if (feature.Geometry.Contains(point))
                         {
                             isInsideRiskZone = true;
@@ -61,18 +64,41 @@ namespace OptiRiskAI.RiskIntelligence
                     }
                 }
 
-                // 2. AŞAMA: Dış Veri (Meteoroloji) Entegrasyonu
+                // ML.NET ve Open-Meteo Entegrasyonu 
                 if (isInsideRiskZone)
                 {
-                    Logger.LogInformation($"[GIS ONAYI] Koordinat orman içinde. OpenWeather FWI API tetikleniyor...");
+                    Logger.LogInformation($"[GIS ONAYI] Koordinat orman içinde. Open-Meteo verisi çekiliyor...");
 
-                    // Sahte 85 skoru yerine gerçek zamanlı API verisini çekiyoruz
-                    double fwiScore = await _openWeatherService.GetFwiScoreAsync(input.Latitude, input.Longitude);
-                    calculatedRiskScore = (decimal)fwiScore;
+                    // Open-Meteo'dan ücretsiz ve limitsiz anlık hava durumunu çek
+                    var weatherData = await _openMeteoService.GetCurrentWeatherAsync(input.Latitude, input.Longitude);
+
+                    Logger.LogInformation($"[METEO] Sıcaklık: {weatherData.Temperature}°C, Nem: %{weatherData.Humidity}, Rüzgar: {weatherData.WindSpeed}km/s");
+
+                    // Gelen canlı veriyi ML.NET motorumuza besle
+                    var modelInput = new OptiRiskModel.ModelInput()
+                    {
+                        Temperature = weatherData.Temperature,
+                        RH = weatherData.Humidity,
+                        Ws = weatherData.WindSpeed,
+                        Rain = weatherData.Rain
+                    };
+
+                    // Öğrettiğimiz model ile Aktüeryal Riski Tahmin Et
+                    var prediction = OptiRiskModel.Predict(modelInput);
+                    calculatedRiskScore = (decimal)prediction.Score;
+                    
+                    Logger.LogInformation($"[ML.NET] Aktüeryal Risk Skoru (FWI) Üretildi: {calculatedRiskScore}");
+                    
+                    // Otonom Ajan Tetikleme Ön Hazırlık
+                    if(calculatedRiskScore > 30.0m)
+                    {
+                         Logger.LogWarning($"[AJAN TETİKLENDİ] Yüksek risk ({Math.Round(calculatedRiskScore, 1)}). BLOCK_POLICY kararı alındı.");
+                         spreadRisk += $" | ML.NET UYARISI: Kritik FWI Skoru ({Math.Round(calculatedRiskScore, 1)})";
+                    }
                 }
                 else
                 {
-                    Logger.LogInformation($"[GIS REDDİ] Koordinat orman dışında. API isteği atlandı.");
+                    Logger.LogInformation($"[GIS REDDİ] Koordinat orman dışında. Meteoroloji ve ML modeli pas geçildi.");
                 }
             }
             else
@@ -80,7 +106,7 @@ namespace OptiRiskAI.RiskIntelligence
                 spreadRisk = "Sistem Uyarısı: GeoJSON veritabanına ulaşılamadı!";
             }
 
-            // 3. AŞAMA: Veritabanı Kaydı
+            // Veritabanı Kaydı (Mevcut kodun korundu)
             var telemetry = new RiskTelemetry(
                 GuidGenerator.Create(),
                 input.Latitude,

@@ -78,4 +78,10 @@
     <PackageReference Include="Volo.Abp.Studio.Client.AspNetCore" Version="3.1.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="OptiRiskModel.mlnet">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
