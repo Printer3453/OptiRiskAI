@@ -18,5 +18,7 @@ namespace OptiRiskAI.RiskIntelligence
         public decimal? CalculatedRiskMultiplier { get; set; }
         public bool IsProcessed { get; set; }
         public string SpreadRisk { get; set; } = string.Empty;
+        public float? Temperature { get; set; }
+        public float? Humidity { get; set; }
     }
 }

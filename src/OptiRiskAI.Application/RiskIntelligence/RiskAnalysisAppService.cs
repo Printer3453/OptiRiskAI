@@ -37,6 +37,8 @@ namespace OptiRiskAI.RiskIntelligence
             // Varsayılan değerler (Güvenli Bölge)
             decimal calculatedRiskScore = 0.0m;
             string spreadRisk = "Düşük (Güvenli Bölge)";
+            float? currentTemp = null; 
+            float? currentHum = null;
 
             var geoJsonPath = Path.Combine(AppContext.BaseDirectory, "GeoData", "AntalyaRisk.geojson");
 
@@ -71,6 +73,8 @@ namespace OptiRiskAI.RiskIntelligence
 
                     // Open-Meteo'dan ücretsiz ve limitsiz anlık hava durumunu çek
                     var weatherData = await _openMeteoService.GetCurrentWeatherAsync(input.Latitude, input.Longitude);
+                    currentTemp = weatherData.Temperature; 
+                    currentHum = weatherData.Humidity;
 
                     Logger.LogInformation($"[METEO] Sıcaklık: {weatherData.Temperature}°C, Nem: %{weatherData.Humidity}, Rüzgar: {weatherData.WindSpeed}km/s");
 
@@ -127,7 +131,9 @@ namespace OptiRiskAI.RiskIntelligence
                 Longitude = telemetry.Longitude,
                 CalculatedRiskMultiplier = calculatedRiskScore,
                 SpreadRisk = spreadRisk,
-                IsProcessed = true
+                IsProcessed = true,
+                Temperature = currentTemp, 
+                Humidity = currentHum
             };
         }
     }
