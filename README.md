@@ -1,32 +1,49 @@
-# OptiRisk AI - MVP
+# OptiRisk AI — İklim/Yangın Risk Skorlama (PoC)
 
-OptiRisk AI, iklim ve orman yangını risklerini coğrafi bilgi sistemleri (GIS), yerel makine öğrenmesi (ML.NET) ve otonom yapay zeka (Agentic Workflow) kullanarak analiz eden uçtan uca bir B2B SaaS Kavram Kanıtı (PoC) projesidir.
+OptiRisk AI; bir koordinatın orman yangını riskini **coğrafi bilgi sistemi (GIS)**, **yerel makine öğrenmesi (ML.NET)** ve **yapay zeka ajanı (Semantic Kernel)** birlikte kullanarak değerlendiren uçtan uca bir kavram kanıtı (PoC) projesidir. Amaç; deterministik mekansal hesaplamayı, canlı meteoroloji verisini ve LLM'in doğal dil yeteneğini tek bir akışta, **düşük/sıfır dış maliyetle** (yerel LLM) birleştirmek.
 
-Projenin temel mimari amacı; deterministik mekansal hesaplamaları, canlı meteoroloji telemetrisini ve Büyük Dil Modellerinin (LLM) karar alma süreçlerini **Domain-Driven Design (DDD)** ve **Clean Architecture** prensiplerine uygun olarak, sıfır dış bağımlılık (sıfır API maliyeti) ile izole bir şekilde çalıştırabilmektir.
+<img width="1610" alt="dashboard" src="https://github.com/user-attachments/assets/f5f0040b-dd1c-46d7-b773-72f68a083799" />
 
-##  Proje Ne Yapıyor?
+## Neden Geliştirdim
 
-* **GIS Tabanlı Filtreleme (Fail-Fast):** Kullanıcının veya otonom sistemin seçtiği nokta, NetTopologySuite ile `GeoData` klasöründeki statik GeoJSON orman poligonlarıyla eşleştirilir. Sistem kaynaklarını korumak için, orman dışı koordinatlar anında reddedilir ve gereksiz API çağrıları engellenir.
-* **Canlı Veri Boru Hattı:** Orman içi onaylanan koordinatlar için **Open-Meteo** API üzerinden limitsiz ve ücretsiz anlık meteorolojik veriler (Sıcaklık, Nem, Rüzgar, Yağış) çekilir.
-* **Yerel Makine Öğrenmesi (ML.NET):** Çekilen canlı iklim verileri, sisteme gömülü yerel ML.NET modeline (LbfgsPoissonRegression) beslenerek saniyeler içinde bilimsel bir Aktüeryal Risk Skoru (FWI) üretilir.
-* **Otonom Aksiyon (LLM):** Çıkan net FWI skoru ve mekansal bağlam, Semantic Kernel üzerinden yerel LLM'e (Ollama) iletilir. Ajan, risk durumuna göre otonom olarak kurumsal iş emirleri (Örn: `BLOCK_POLICY`, `LOG_ONLY`, `ALERT_TEAM`) ve departman yönlendirmeleri üretir.
-* **7/24 Komuta Kontrol Merkezi:** Arka plan işçisi (Background Worker) haritayı otonom olarak tarar. Web arayüzündeki Canlı Radar (Live Feed) sayesinde, tespit edilen riskler ve ajanın aldığı kararlar Matrix tarzı bir terminal ekranında anlık olarak görselleştirilir.
-<img width="1610" height="782" alt="image" src="https://github.com/user-attachments/assets/f5f0040b-dd1c-46d7-b773-72f68a083799" />
+OptiRisk'i Teknopark İstanbul'un HASAT programı için yaptım. Çıkış noktam şu: 2026'da zorunlu afet sigortası (DASK'ın yerine gelen ZAS) ilk kez orman yangınını ve köy/kırsal yerleşimi de kapsayacak. Ama Türkiye'de "şu evin yanma riski ne kadar" diye ev bazında hesaplayan bir sistem yok; mevcut haritalar ilçe bazlı ve statik.
 
-##  Teknoloji Yığını
+Ben de hava durumu (sıcaklık, nem, rüzgar), arazi eğimi ve bitki örtüsü verisini kullanarak bir koordinatın yangın riskini skorlayan çalışan bir prototip yazdım. Fikri, Kaliforniya'daki **Kettle** adlı iklim-sigorta girişiminden esinlendim; onların uydu verisi + yapay zekayla yangın riskini fiyatlama yaklaşımından. 20 günde hem bu konuyu araştırdım hem de prototipi geliştirdim.
 
-* **Altyapı:** .NET 10.0, C#, ABP Framework (Clean Architecture)
-* **GIS Motoru:** NetTopologySuite, System.Text.Json (GeoJSON Parsing)
-* **Makine Öğrenmesi:** ML.NET (Aktüeryal FWI Modeli)
-* **AI Entegrasyonu:** Microsoft Semantic Kernel, Ollama (Local-First LLM)
-* **Dış Servisler:** Open-Meteo (Gerçek Zamanlı Hava Durumu)
-* **Frontend:** ASP.NET Core MVC / Razor Pages, Bootstrap 5, Leaflet.js, Asenkron Auto-Polling
-* **Veritabanı:** SQLite, Entity Framework Core
+> Bu bir demo/prototip;  Amacım, fikrin işe yarayıp yaramadığını kendi başıma uçtan uca gösterebilmekti. (Teknik olarak yaptığım: ML.NET ile bir yangın risk skoru + harita üstünde bölge filtresi + sonucu açıklayan bir yapay zeka asistanı.)
 
-##  Hızlı Başlangıç
+## Akış Nasıl Çalışıyor?
 
-1. Depoyu klonlayıp bağımlılıkları yükleyin: `dotnet restore`
-2. `OptiRiskAI.Application` projesi içindeki `OptiRiskModel.mlnet` dosyasının özelliklerinden `Copy to Output Directory` değerini `Copy if newer` olarak ayarlayın.
-3. Veritabanı migrasyonlarını uygulayın: `dotnet ef database update`
-4. Yerel LLM motoru Ollama'yı arka planda çalıştırın.
-5. Web projesini ayağa kaldırın: `dotnet run --project src/OptiRiskAI.Web`
+1. **GIS filtresi (fail-fast):** Seçilen nokta, NetTopologySuite ile `GeoData` klasöründeki GeoJSON orman poligonlarıyla eşleştirilir. Orman dışıysa anında reddedilir; gereksiz API/ML çağrısı yapılmaz.
+2. **Canlı meteoroloji:** Orman içi noktalar için **Open-Meteo** API'den anlık sıcaklık, nem, rüzgar, yağış çekilir (koordinatlarda `InvariantCulture` ile locale hatası önlenir; API düşerse fallback veri ile akış çökmez).
+3. **ML.NET skoru:** Canlı iklim verisi, ML.NET Model Builder ile **Algerian Forest Fires** veri setinde eğitilmiş modele verilerek bir FWI (Fire Weather Index) risk skoru üretir.
+4. **AI ajanı (zırhlı karar):** Kararı **LLM değil, C# eşikleri verir** (örn. skor > 80 → `BLOCK_POLICY`). Semantic Kernel üzerinden yerel LLM (Ollama) yalnızca ilgili departmanın okuyacağı **gerekçe cümlesini** yazar. Böylece iş kararı LLM halüsinasyonuna bırakılmaz.
+5. **Arka plan simülasyonu:** Bir background worker periyodik olarak örnek grid noktalarını tarar; sonuçlar web arayüzünde canlı akışta gösterilir.
+
+## Teknoloji Yığını
+
+- **Altyapı:** .NET 10, ABP Framework (katmanlı DDD), SQLite + EF Core
+- **GIS:** NetTopologySuite (GeoJSON point-in-polygon)
+- **ML:** ML.NET (FWI regresyon modeli)
+- **AI:** Microsoft Semantic Kernel + Ollama (yerel LLM)
+- **Dış servis:** Open-Meteo
+- **Frontend:** ASP.NET Core / Razor, Leaflet.js, asenkron polling
+
+## Mimari Not
+
+Domain katmanında gerçek DDD uygulandı: entity'ler aggregate root, private setter ve davranışsal metotlarla tasarlandı. Proje ABP starter şablonu üzerine kurulduğu için şablondan gelen örnek (Author/Book) parçaları ve bazı MVP kısayolları (ör. listelemede tüm kaydı belleğe çekme) hâlâ mevcut — aşağıdaki yol haritasında temizleniyor.
+
+
+
+## Çalıştırma
+
+1. `dotnet restore`
+2. `OptiRiskModel.mlnet` dosyasında `Copy to Output Directory → Copy if newer` ayarla.
+3. `dotnet ef database update`
+4. Ollama'yı çalıştır.
+5. `dotnet run --project src/OptiRiskAI.Web`
+
+---
+*Geliştirici: Ömer Faruk Yazıcı · Bir öğrenme/PoC projesidir.*
+
+
